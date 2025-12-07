@@ -1,5 +1,14 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+@keyframes pulse-slow {
+  0% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+  100% { opacity: 0.35; }
+}
 
+.animate-pulse-slow {
+  animation: pulse-slow 6s ease-in-out infinite;
+}
 
 :root {
   --background: #ffffff;

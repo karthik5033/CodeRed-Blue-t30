@@ -1,133 +1,217 @@
-import React, { useCallback, useRef, useState } from "react";
+"use client";
+
+import Sidebar from "./Sidebar";
+import React from "react";
+
 import {
-  ReactFlowProvider,
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
-  MiniMap,
-  addEdge,
-  applyNodeChanges,
   applyEdgeChanges,
-  Connection,
-  Edge,
-  Node,
-  OnNodesChange,
-  OnEdgesChange,
-  OnConnect,
-  NodeChange,
-  EdgeChange,
-} from "reactflow";
-import "reactflow/dist/style.css";
+  applyNodeChanges,
+  addEdge,
+  MiniMap,
+  ReactFlowProvider,
+} from "@xyflow/react";
 
-/*
-  FlowCanvas.tsx
-  - Wraps ReactFlow in ReactFlowProvider
-  - Provides default nodes + edges for AvatarFlowX v1
-  - Includes handlers for node/edge changes and connecting
-  - Lightweight, beginner-friendly, production-minded
-*/
+import TextNode from "./nodes/TextNode";
 
-const initialNodes: Node[] = [
-  {
-    id: "1",
-    type: "input",
-    data: { label: "Input Node (Form)" },
-    position: { x: 0, y: 0 },
-  },
-  {
-    id: "2",
-    type: "default",
-    data: { label: "AI Logic Node" },
-    position: { x: 300, y: 0 },
-  },
-  {
-    id: "3",
-    type: "output",
-    data: { label: "Output Node (Results)" },
-    position: { x: 600, y: 0 },
-  },
-];
-
-const initialEdges: Edge[] = [
-  { id: "e1-2", source: "1", target: "2", animated: true },
-  { id: "e2-3", source: "2", target: "3", animated: true },
-];
+const nodeTypes = {
+  textNode: TextNode,
+};
 
 export default function FlowCanvas() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const reactFlowWrapper = useRef<HTMLDivElement | null>(null);
-  const [rfInstance, setRfInstance] = useState<any>(null);
+  const [reactFlowInstance, setReactFlowInstance] = React.useState<any>(null);
 
-  // Handles node drag / changes
-  const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nds) => applyNodeChanges(changes, nds));
-  }, []);
+  const snapToGrid = (position: any, gridSize = 24) => ({
+    x: Math.round(position.x / gridSize) * gridSize,
+    y: Math.round(position.y / gridSize) * gridSize,
+  });
 
-  // Handles edge add / remove / update
-  const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds));
-  }, []);
+  const [nodes, setNodes] = React.useState([
+    {
+      id: "input",
+      type: "default",
+      position: { x: 100, y: 250 },
+      data: { label: "Input Node (Form)" },
+      style: {
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid #d0d7e2",
+        background: "white",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.08)",
+      },
+    },
+    {
+      id: "logic",
+      type: "default",
+      position: { x: 420, y: 250 },
+      data: { label: "AI Logic Node" },
+      style: {
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid #d0d7e2",
+        background: "white",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.08)",
+      },
+    },
+    {
+      id: "output",
+      type: "default",
+      position: { x: 740, y: 250 },
+      data: { label: "Output Node (Results)" },
+      style: {
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid #d0d7e2",
+        background: "white",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.08)",
+      },
+    },
+  ]);
 
-  // When a user connects two nodes (draws an edge)
-  const onConnect: OnConnect = useCallback((connection: Connection) => {
-    setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
-  }, []);
+  const [edges, setEdges] = React.useState([
+    {
+      id: "e1",
+      source: "input",
+      target: "logic",
+      animated: true,
+      style: { stroke: "#4e7aff", strokeWidth: 2 },
+    },
+    {
+      id: "e2",
+      source: "logic",
+      target: "output",
+      animated: true,
+      style: { stroke: "#4e7aff", strokeWidth: 2 },
+    },
+  ]);
 
-  const onInit = useCallback((flow: any) => {
-    setRfInstance(flow);
-  }, []);
+  const onDragOver = (event: any) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
 
-  // Quick helper to reset the canvas to initial demo state
-  const resetCanvas = useCallback(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-    if (rfInstance) {
-      rfInstance.fitView();
-    }
-  }, [rfInstance]);
+  const onDrop = (event: any) => {
+    event.preventDefault();
+    if (!reactFlowInstance) return;
+
+    const type = event.dataTransfer.getData("node-type");
+    if (!type) return;
+
+    let position = reactFlowInstance.project({
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    position = snapToGrid(position);
+
+    const newNode = {
+      id: `${type}_${Date.now()}`,
+      type,
+      position,
+      data: { label: "", text: "" },
+      style: {
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid #d0d7e2",
+        background: "white",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.08)",
+      },
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+  };
+
+  const addNode = (type: string) => {
+    const newNode = {
+      id: `${type}_${Date.now()}`,
+      type,
+      position: { x: 100, y: 100 },
+      data: { label: "", text: "" },
+      style: {
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid #d0d7e2",
+        background: "white",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.08)",
+      },
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+  };
+
+  const onNodesChange = React.useCallback(
+    (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onEdgesChange = React.useCallback(
+    (changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onConnect = React.useCallback(
+    (params: any) =>
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            animated: true,
+            style: { stroke: "#4e7aff", strokeWidth: 2 },
+          },
+          eds
+        )
+      ),
+    []
+  );
 
   return (
-    <div className="w-full h-[70vh] rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-      <ReactFlowProvider>
-        <div ref={reactFlowWrapper} className="w-full h-full">
+    <ReactFlowProvider>
+      <div className="w-full h-full flex">
+        <FlowCanvas />
+
+        <div className="flex-1 rounded-xl overflow-hidden">
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            nodeTypes={nodeTypes}
+            onInit={setReactFlowInstance}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onInit={onInit}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
             fitView
-            attributionPosition="bottom-left"
+            panOnDrag
             panOnScroll
+            zoomOnScroll
           >
-            {/* visual helpers */}
-            <Background gap={12} size={1} />
+            <Background
+              id="grid"
+              gap={24}
+              size={2}
+              color="#e2e8f0"
+              variant={BackgroundVariant.Dots}
+            />
+
+            <Controls position="bottom-left" />
+
             <MiniMap
-              nodeColor={(n) => {
-                if (n.type === "input") return "#10b981"; // green-ish for inputs
-                if (n.type === "output") return "#ef4444"; // red-ish for outputs
-                return "#2563eb"; // blue for logic nodes
+              nodeColor={() => "#4e7aff"}
+              nodeStrokeWidth={1.5}
+              maskColor="rgba(255,255,255,0.7)"
+              style={{
+                bottom: 16,
+                right: 16,
+                borderRadius: "12px",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
               }}
             />
-            <Controls showInteractive={true} />
           </ReactFlow>
         </div>
-      </ReactFlowProvider>
-
-      {/* Small action bar - beginner friendly and non-invasive */}
-      <div className="p-2 flex items-center gap-2">
-        <button
-          className="px-3 py-1 rounded bg-slate-800 text-white text-sm"
-          onClick={resetCanvas}
-        >
-          Reset Canvas
-        </button>
-        <div className="text-xs text-slate-600">
-          Drag nodes → Connect edges → Double-click canvas to add
-        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 }
