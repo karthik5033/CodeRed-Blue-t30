@@ -42,8 +42,8 @@ export default function HeroSection() {
                   size="lg"
                   className="h-12 rounded-full text-base bg-white text-black hover:bg-neutral-200"
                 >
-                  <Link href="/flow">
-                    Go to Builder <ChevronRight className="ml-2" />
+                  <Link href="/ai-builder">
+                    Start Building <ChevronRight className="ml-2" />
                   </Link>
                 </Button>
 
