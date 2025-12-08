@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@xyflow/react": "^12.10.0",
     "class-variance-authority": "^0.7.1",
@@ -19,6 +20,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-resizable-panels": "^3.0.6",
+    "react-syntax-highlighter": "^16.1.0",
     "react-use-measure": "^2.1.7",
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.4.0"
@@ -28,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "eslint": "^9",
     "eslint-config-next": "16.0.6",
     "tailwindcss": "^4",
