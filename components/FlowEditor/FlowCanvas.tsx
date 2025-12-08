@@ -100,8 +100,6 @@ export default function FlowCanvas() {
     setNodes(initial);
   }, [updateNodeData]);
 
-  
-
   const [edges, setEdges] = React.useState<any[]>([
     {
       id: "e1",
@@ -123,6 +121,14 @@ export default function FlowCanvas() {
       style: { stroke: "#4e7aff", strokeWidth: 2 },
     },
   ]);
+  // ⭐ Snapline visual guides
+  const [guides, setGuides] = React.useState<{
+    x: number | null;
+    y: number | null;
+  }>({
+    x: null,
+    y: null,
+  });
 
   // History stacks for undo/redo
   const [history, setHistory] = React.useState<any[]>([]);
@@ -153,7 +159,6 @@ export default function FlowCanvas() {
     setEdges(next.edges);
     setFuture((f) => f.slice(0, -1));
   }, [future, nodes, edges]);
-
 
   const onDragOver = (event: any) => {
     event.preventDefault();
@@ -228,7 +233,6 @@ export default function FlowCanvas() {
     [pushToHistory]
   );
 
-
   const onEdgesChange = React.useCallback(
     (changes: any) => {
       pushToHistory();
@@ -236,7 +240,6 @@ export default function FlowCanvas() {
     },
     [pushToHistory]
   );
-
 
   const onConnect = React.useCallback(
     (params: any) => {
@@ -254,7 +257,6 @@ export default function FlowCanvas() {
     },
     [pushToHistory]
   );
-
 
   // Export flow JSON (nodes + edges) and trigger download
   const exportFlow = React.useCallback(() => {
@@ -419,6 +421,24 @@ export default function FlowCanvas() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [pushToHistory, undo, redo]);
 
+  // ⭐ Compute snapline guides while dragging
+  const computeGuides = (draggedNode: any) => {
+    let xGuide: number | null = null;
+    let yGuide: number | null = null;
+
+    nodes.forEach((node) => {
+      if (node.id === draggedNode.id) return;
+
+      const dx = Math.abs(draggedNode.position.x - node.position.x);
+      const dy = Math.abs(draggedNode.position.y - node.position.y);
+
+      // Snap threshold (10 px)
+      if (dx < 10) xGuide = node.position.x;
+      if (dy < 10) yGuide = node.position.y;
+    });
+
+    setGuides({ x: xGuide, y: yGuide });
+  };
 
   return (
     <ReactFlowProvider>
@@ -437,6 +457,8 @@ export default function FlowCanvas() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeDrag={(event, node) => computeGuides(node)}
+            onNodeDragStop={() => setGuides({ x: null, y: null })}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
@@ -465,6 +487,38 @@ export default function FlowCanvas() {
                 boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
               }}
             />
+
+            {/* ⭐ Vertical guide */}
+            {guides.x !== null && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  left: guides.x,
+                  width: 1,
+                  background: "#4e7aff",
+                  opacity: 0.6,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
+
+            {/* ⭐ Horizontal guide */}
+            {guides.y !== null && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: guides.y,
+                  height: 1,
+                  background: "#4e7aff",
+                  opacity: 0.6,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
           </ReactFlow>
         </div>
       </div>
