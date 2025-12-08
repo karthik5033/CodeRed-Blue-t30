@@ -37,7 +37,7 @@ export const Logo = ({
       {/* New wordmark */}
       <span className="font-bold text-xl tracking-tight text-white">
         AvatarFlow
-        <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-500 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-cyan-300 via-blue-400 to-indigo-500 bg-clip-text text-transparent">
           X
         </span>
       </span>

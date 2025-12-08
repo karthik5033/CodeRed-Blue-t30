@@ -1,9 +1,13 @@
 "use client";
 
+import React from "react";
+
 export default function Sidebar({
   addNode,
+  exportFlow,
 }: {
   addNode: (type: string) => void;
+  exportFlow: () => void;
 }) {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData("node-type", nodeType);
@@ -11,41 +15,34 @@ export default function Sidebar({
   };
 
   return (
-    <aside
-      className="
-        w-full 
-        flex 
-        flex-col 
-        gap-3 
-        p-4 
-        border-r 
-        border-slate-200 
-        bg-white 
-        shadow-sm
-      "
-    >
-      <h3 className="text-sm font-semibold text-slate-600 tracking-wide">
-        Add Nodes
-      </h3>
+    <aside className="p-2 bg-card rounded-md border border-border">
+      <div className="flex flex-col gap-2">
+        <div
+          draggable
+          onDragStart={(e) => onDragStart(e, "textNode")}
+          className="cursor-grab p-2 rounded-md border border-border bg-background text-sm text-foreground"
+        >
+          + Text Node (drag)
+        </div>
 
-      {/* TEXT NODE BUTTON */}
-      <div
-        className="
-          cursor-pointer 
-          p-3 
-          rounded-xl 
-          border 
-          border-slate-300 
-          bg-slate-50 
-          hover:bg-slate-100 
-          transition 
-          shadow-sm
-        "
-        draggable
-        onDragStart={(e) => onDragStart(e, "textNode")}
-        onClick={() => addNode("textNode")} // ←🔥 CLICK HANDLER ADDED
-      >
-        ➕ Text Node
+        <button
+          onClick={() => addNode("textNode")}
+          className="mt-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm"
+        >
+          + Add Text Node
+        </button>
+
+        <button
+          onClick={exportFlow}
+          className="mt-2 px-3 py-2 rounded-md border border-border bg-background text-sm"
+        >
+          Export Flow (JSON)
+        </button>
+
+        <small className="text-xs text-muted-foreground mt-2 block">
+          Tip: double-click a node to edit its label. Add outputs inside the
+          node to create multiple connection ports.
+        </small>
       </div>
     </aside>
   );
