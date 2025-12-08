@@ -300,7 +300,7 @@ export async function submit(data) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
-              className="rounded-2xl overflow-hidden border bg-gradient-to-b from-zinc-900 to-black shadow-xl"
+              className="rounded-2xl overflow-hidden border bg-linear-to-b from-zinc-900 to-black shadow-xl"
             >
               {/* Top tab bar */}
               <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/60 backdrop-blur">
@@ -345,7 +345,7 @@ export async function submit(data) {
                   className="min-h-[440px] flex"
                 >
                   {tab === "preview" ? (
-                    <div className="w-full p-8 bg-gradient-to-b from-zinc-900 to-black text-white">
+                    <div className="w-full p-8 bg-linear-to-b from-zinc-900 to-black text-white">
                       <h4 className="text-xl font-semibold mb-1">Sample App</h4>
                       <p className="text-sm text-zinc-400 mb-6">
                         Instantly generated UI → input → API → result
