@@ -49,9 +49,12 @@ export default function HeroSection() {
                     asChild
                     size="lg"
                     variant="outline"
-                    className="h-12 rounded-full text-base border-white text-white hover:bg-white/10"
+                    className="h-12 rounded-full text-base bg-white text-black hover:bg-neutral-200"
                   >
-                    <Link href="/docs/getting-started">Learn How It Works</Link>
+                    <Link href="/docs/getting-started">
+                      Learn How It Works
+                      <ChevronRight className="ml-2" />
+                    </Link>
                   </Button>
                 </div>
               </div>

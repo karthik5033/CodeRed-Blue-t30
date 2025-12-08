@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { HeroHeader } from "@/components/header";
 import Features from "@/components/features-4";
 import { ChevronRight } from "lucide-react";
+import IntegrationsSection from "@/components/integrations-7";
 
 export default function HeroSection() {
   return (
@@ -62,6 +63,8 @@ export default function HeroSection() {
 
       {/* ⭐ ADD FEATURES SECTION HERE ⭐ */}
       <Features />
+
+      <IntegrationsSection />
     </>
   );
 }
