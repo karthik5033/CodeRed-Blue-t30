@@ -7,7 +7,7 @@ export default function TextNode({ data }: any) {
   const [text, setText] = useState(data.text || "");
 
   return (
-    <div className="bg-white p-3 rounded-xl shadow-md border border-slate-300 w-[160px]">
+    <div className="bg-white p-3 rounded-xl shadow-md border border-slate-300 w-40">
       <textarea
         className="w-full bg-transparent resize-none outline-none text-slate-800 text-sm"
         rows={2}
