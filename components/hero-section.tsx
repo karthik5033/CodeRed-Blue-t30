@@ -31,27 +31,27 @@ export default function HeroSection() {
                 </p>
 
                 {/* BUTTONS — customized */}
-                <div className="mt-12 flex flex-col items-center justify-center gap-2 sm:flex-row lg:justify-start">
+                <div className="mt-10 flex flex-col sm:flex-row gap-4">
+                  {/* Go to Builder */}
                   <Button
                     asChild
                     size="lg"
-                    className="h-12 rounded-full pl-5 pr-3 text-base"
+                    className="h-12 rounded-full text-base bg-white text-black hover:bg-neutral-200"
                   >
-                    <Link href="#editor">
-                      <span className="text-nowrap">Launch Visual Editor</span>
-                      <ChevronRight className="ml-1" />
+                    <Link href="/flow">
+                      Go to Builder
+                      <ChevronRight className="ml-2" />
                     </Link>
                   </Button>
 
+                  {/* Learn How It Works */}
                   <Button
                     asChild
                     size="lg"
-                    variant="ghost"
-                    className="h-12 rounded-full px-5 text-base hover:bg-zinc-950/5 dark:hover:bg-white/5"
+                    variant="outline"
+                    className="h-12 rounded-full text-base border-white text-white hover:bg-white/10"
                   >
-                    <Link href="#demo">
-                      <span className="text-nowrap">Watch Demo</span>
-                    </Link>
+                    <Link href="/docs/getting-started">Learn How It Works</Link>
                   </Button>
                 </div>
               </div>

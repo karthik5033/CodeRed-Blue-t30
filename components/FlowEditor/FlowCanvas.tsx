@@ -170,8 +170,6 @@ export default function FlowCanvas() {
   return (
     <ReactFlowProvider>
       <div className="w-full h-full flex">
-        <FlowCanvas />
-
         <div className="flex-1 rounded-xl overflow-hidden">
           <ReactFlow
             nodes={nodes}

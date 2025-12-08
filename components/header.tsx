@@ -7,12 +7,10 @@ import React from "react";
 import { useScroll, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-// AvatarFlowX specific navigation
 const menuItems = [
   { name: "Features", href: "#features" },
   { name: "How It Works", href: "#how" },
   { name: "Editor", href: "#editor" },
-  { name: "Pricing", href: "#pricing" },
   { name: "Docs", href: "#docs" },
 ];
 
@@ -22,34 +20,34 @@ export const HeroHeader = () => {
   const { scrollYProgress } = useScroll();
 
   React.useEffect(() => {
-    const unsubscribe = scrollYProgress.on("change", (latest) => {
-      setScrolled(latest > 0.05);
+    const unsub = scrollYProgress.on("change", (val) => {
+      setScrolled(val > 0.05);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, [scrollYProgress]);
 
   return (
     <header>
       <nav
         data-state={menuState && "active"}
-        className="fixed z-20 w-full pt-2"
+        className="fixed top-0 z-40 w-full pt-2 transition-all"
       >
         <div
           className={cn(
-            "mx-auto max-w-7xl rounded-3xl px-6 transition-all duration-300 lg:px-12",
-            scrolled &&
-              "bg-background/50 backdrop-blur-xl border border-border/40"
+            "mx-auto max-w-7xl rounded-3xl px-6 lg:px-12 transition-all duration-300",
+            // Always glass on hero, slightly stronger when scrolled
+            "bg-black/20 backdrop-blur-xl border border-white/10",
+            scrolled && "bg-black/40 border-white/20"
           )}
         >
           <motion.div
-            key={1}
             className={cn(
-              "relative flex flex-wrap items-center justify-between gap-6 py-3 duration-200 lg:gap-0 lg:py-6",
-              scrolled && "lg:py-4"
+              "relative flex flex-wrap items-center justify-between gap-6 py-4 lg:py-5 lg:gap-0 transition-all",
+              scrolled && "py-3"
             )}
           >
-            {/* Left Section: Logo + Mobile Toggle */}
-            <div className="flex w-full items-center justify-between gap-12 lg:w-auto">
+            {/* Left: logo + mobile */}
+            <div className="flex w-full items-center justify-between lg:w-auto">
               <Link
                 href="/"
                 aria-label="home"
@@ -58,26 +56,25 @@ export const HeroHeader = () => {
                 <Logo className="h-7 w-auto" />
               </Link>
 
-              {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setMenuState(!menuState)}
                 aria-label={menuState ? "Close Menu" : "Open Menu"}
-                className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden"
+                className="relative z-20 block cursor-pointer p-2.5 lg:hidden"
               >
-                <Menu className="in-data-[state=active]:rotate-180 in-data-[state=active]:scale-0 in-data-[state=active]:opacity-0 m-auto size-6 duration-200" />
-                <X className="in-data-[state=active]:rotate-0 in-data-[state=active]:scale-100 in-data-[state=active]:opacity-100 absolute inset-0 m-auto size-6 -rotate-180 scale-0 opacity-0 duration-200" />
+                <Menu className="size-6 transition-all data-[state=active]:scale-0 data-[state=active]:opacity-0" />
+                <X className="absolute inset-0 size-6 scale-0 opacity-0 transition-all data-[state=active]:scale-100 data-[state=active]:opacity-100" />
               </button>
 
-              {/* Desktop Menu Items */}
+              {/* Desktop Menu */}
               <div className="hidden lg:block">
                 <ul className="flex gap-8 text-sm">
-                  {menuItems.map((item, index) => (
-                    <li key={index}>
+                  {menuItems.map((item, i) => (
+                    <li key={i}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        className="text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] hover:text-white transition"
                       >
-                        <span>{item.name}</span>
+                        {item.name}
                       </Link>
                     </li>
                   ))}
@@ -85,36 +82,46 @@ export const HeroHeader = () => {
               </div>
             </div>
 
-            {/* Mobile Dropdown + Right Buttons */}
-            <div className="bg-background in-data-[state=active]:block lg:in-data-[state=active]:flex mb-6 hidden w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-xl shadow-zinc-300/10 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
-              {/* Mobile menu items */}
-              <div className="lg:hidden">
-                <ul className="space-y-6 text-base">
-                  {menuItems.map((item, index) => (
-                    <li key={index}>
+            {/* Mobile dropdown + right buttons */}
+            <div
+              className="hidden w-full flex-wrap justify-end rounded-3xl p-6 shadow-xl shadow-black/10
+                         lg:flex lg:w-fit lg:p-0 lg:shadow-none
+                         bg-black/30 backdrop-blur-xl border border-white/10
+                         data-[state=active]:block"
+            >
+              {/* Mobile menu */}
+              <div className="lg:hidden w-full mb-6">
+                <ul className="space-y-6 text-lg">
+                  {menuItems.map((item, i) => (
+                    <li key={i}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        className="text-white/90 hover:text-white transition drop-shadow"
                       >
-                        <span>{item.name}</span>
+                        {item.name}
                       </Link>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Auth Buttons */}
-              <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/login">
-                    <span>Login</span>
-                  </Link>
+              {/* Buttons */}
+              <div className="flex w-full flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3 lg:w-fit">
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-black font-medium hover:bg-neutral-200 shadow"
+                >
+                  <Link href="/login">Login</Link>
                 </Button>
 
-                <Button asChild size="sm">
-                  <Link href="/signup">
-                    <span>Launch Editor</span>
-                  </Link>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-black/80 text-white font-medium hover:bg-black shadow-lg"
+                >
+                  <Link href="/flow">Launch Editor</Link>
                 </Button>
               </div>
             </div>
