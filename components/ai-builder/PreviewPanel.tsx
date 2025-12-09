@@ -8,11 +8,13 @@ import { FileData } from '@/types/ai-builder';
 interface PreviewPanelProps {
     files: FileData[];
     isLoading: boolean;
+    isFullscreen?: boolean;
+    onToggleFullscreen?: () => void;
 }
 
 type ViewportSize = 'mobile' | 'tablet' | 'desktop' | 'fullscreen';
 
-export default function PreviewPanel({ files, isLoading }: PreviewPanelProps) {
+export default function PreviewPanel({ files, isLoading, isFullscreen = false, onToggleFullscreen }: PreviewPanelProps) {
     const [viewport, setViewport] = useState<ViewportSize>('desktop');
     const [key, setKey] = useState(0);
     const [activeHtmlIndex, setActiveHtmlIndex] = useState(0);
@@ -119,9 +121,10 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
                         <Monitor className="w-4 h-4" />
                     </Button>
                     <Button
-                        variant={viewport === 'fullscreen' ? 'default' : 'outline'}
+                        variant={isFullscreen ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setViewport('fullscreen')}
+                        onClick={onToggleFullscreen}
+                        title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
@@ -164,8 +167,8 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
                                         key={file.name}
                                         onClick={() => setActiveHtmlIndex(index)}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeHtmlIndex === index
-                                                ? 'bg-purple-600 text-white'
-                                                : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                                             }`}
                                     >
                                         {file.name.replace('.html', '')}

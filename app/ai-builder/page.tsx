@@ -13,6 +13,7 @@ export default function AIBuilderPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const handleGenerate = async (prompt: string) => {
         setIsGenerating(true);
@@ -111,15 +112,17 @@ export default function AIBuilderPage() {
 
             {/* Main Layout */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left: Prompt Input */}
-                <div className="w-96">
-                    <PromptInput onSubmit={handleGenerate} isLoading={isGenerating} />
-                </div>
+                {/* Left: Prompt Input - Hide in fullscreen */}
+                {!isFullscreen && (
+                    <div className="w-96">
+                        <PromptInput onSubmit={handleGenerate} isLoading={isGenerating} />
+                    </div>
+                )}
 
                 {/* Center: Preview and Code */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Edit Prompt - Only show when files exist */}
-                    {generatedFiles.length > 0 && (
+                    {/* Edit Prompt - Only show when files exist and not in fullscreen */}
+                    {generatedFiles.length > 0 && !isFullscreen && (
                         <div className="border-b border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50 dark:bg-neutral-900">
                             <div className="flex gap-2">
                                 <input
@@ -152,17 +155,24 @@ export default function AIBuilderPage() {
                     )}
 
                     <div className="flex-1 overflow-hidden">
-                        <PreviewPanel files={generatedFiles} isLoading={isGenerating} />
+                        <PreviewPanel
+                            files={generatedFiles}
+                            isLoading={isGenerating}
+                            isFullscreen={isFullscreen}
+                            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                        />
                     </div>
-                    <CodeDisplay files={generatedFiles} />
+                    {!isFullscreen && <CodeDisplay files={generatedFiles} />}
                 </div>
 
-                {/* Right: Customization */}
-                <CustomizationSidebar
-                    onCustomize={handleCustomize}
-                    isLoading={isCustomizing}
-                    hasCode={generatedFiles.length > 0}
-                />
+                {/* Right: Customization - Hide in fullscreen */}
+                {!isFullscreen && (
+                    <CustomizationSidebar
+                        onCustomize={handleCustomize}
+                        isLoading={isCustomizing}
+                        hasCode={generatedFiles.length > 0}
+                    />
+                )}
             </div>
         </div>
     );
