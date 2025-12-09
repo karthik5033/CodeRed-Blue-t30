@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateCustomizationPrompt, generateModificationPrompt } from '@/lib/prompts';
-import { extractCodeFromResponse } from '@/lib/code-parser';
+import { parseAIResponse } from '@/lib/file-parser';
+import { FileData } from '@/types/ai-builder';
 
 export async function POST(request: NextRequest) {
     try {
-        const { code, modification, customizations } = await request.json();
+        const { code, files, modification, customizations } = await request.json();
 
-        if (!code || typeof code !== 'string') {
+        console.log('[Modify API] Request received:', {
+            hasCode: !!code,
+            hasFiles: !!files,
+            filesCount: files?.length || 0,
+            hasModification: !!modification,
+            hasCustomizations: !!customizations,
+        });
+
+        // Support both old (code) and new (files) format
+        let existingCode = code;
+        let existingFiles: FileData[] | undefined = files;
+
+        if (!existingCode && !existingFiles) {
             return NextResponse.json(
-                { error: 'Code is required' },
+                { error: 'Code or files are required' },
                 { status: 400 }
             );
+        }
+
+        // If files provided, combine them for modification
+        if (existingFiles) {
+            existingCode = existingFiles.map(f =>
+                `\`\`\`${f.type}:${f.name}\n${f.content}\n\`\`\``
+            ).join('\n\n');
         }
 
         // Check if API key is configured at runtime
@@ -39,9 +59,11 @@ export async function POST(request: NextRequest) {
         // Generate prompt based on type of modification
         let prompt: string;
         if (customizations) {
-            prompt = generateCustomizationPrompt(code, customizations);
+            console.log('[Modify API] Generating customization prompt');
+            prompt = generateCustomizationPrompt(existingCode, customizations);
         } else if (modification) {
-            prompt = generateModificationPrompt(code, modification);
+            console.log('[Modify API] Generating modification prompt for:', modification);
+            prompt = generateModificationPrompt(existingCode, modification);
         } else {
             return NextResponse.json(
                 { error: 'Either modification or customizations is required' },
@@ -49,17 +71,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        console.log('[Modify API] Calling Gemini API...');
         // Generate modified code
         const result = await model.generateContent(prompt);
+        console.log('[Modify API] Gemini API response received');
         const response = result.response.text();
 
-        // Extract code from response
-        const { code: modifiedCode, language } = extractCodeFromResponse(response);
+        // Extract files from response
+        const modifiedFiles = parseAIResponse(response);
+        console.log('[Modify API] Parsed', modifiedFiles.length, 'files from AI response');
 
         return NextResponse.json({
-            code: modifiedCode,
-            language,
-            original: code,
+            files: modifiedFiles,
+            original: existingFiles || [{ name: 'index.html', content: code, type: 'html' as const }],
         });
     } catch (error) {
         console.error('Modification API Error:', error);

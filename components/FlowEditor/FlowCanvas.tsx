@@ -172,7 +172,7 @@ export default function FlowCanvas() {
     const type = event.dataTransfer.getData("node-type");
     if (!type) return;
 
-    let position = reactFlowInstance.project({
+    let position = reactFlowInstance.screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
     });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generatePagePrompt } from '@/lib/prompts';
 import { optimizePrompt } from '@/lib/prompt-optimizer';
-import { extractCodeFromResponse } from '@/lib/code-parser';
+import { parseAIResponse } from '@/lib/file-parser';
 
 export async function POST(request: NextRequest) {
     try {
@@ -65,16 +65,15 @@ export async function POST(request: NextRequest) {
                         );
                     }
 
-                    // Extract and validate code
-                    const { code, language } = extractCodeFromResponse(fullResponse);
+                    // Extract and validate files
+                    const files = parseAIResponse(fullResponse);
 
-                    // Send final code
+                    // Send final files
                     controller.enqueue(
                         encoder.encode(
                             `data: ${JSON.stringify({
                                 done: true,
-                                code,
-                                language,
+                                files,
                                 fullResponse
                             })}\n\n`
                         )

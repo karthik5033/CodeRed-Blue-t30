@@ -1,37 +1,79 @@
 'use client';
 
 import { useState } from 'react';
-import { Palette, Type, Layout, Download, Code2 } from 'lucide-react';
+import { Code2, Download, Copy, Check, FileCode, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { FileData } from '@/types/ai-builder';
+import JSZip from 'jszip';
 
 interface CodeDisplayProps {
-    code: string;
-    language?: string;
+    files: FileData[];
 }
 
-export default function CodeDisplay({ code, language = 'tsx' }: CodeDisplayProps) {
+export default function CodeDisplay({ files }: CodeDisplayProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const [activeFileIndex, setActiveFileIndex] = useState(0);
+    const [copiedFile, setCopiedFile] = useState<string | null>(null);
 
-    const handleCopy = async () => {
-        await navigator.clipboard.writeText(code);
-        // You can add a toast notification here
+    if (!files || files.length === 0) return null;
+
+    const activeFile = files[activeFileIndex];
+
+    const handleCopy = async (file: FileData) => {
+        await navigator.clipboard.writeText(file.content);
+        setCopiedFile(file.name);
+        setTimeout(() => setCopiedFile(null), 2000);
     };
 
-    const handleDownload = () => {
-        const blob = new Blob([code], { type: 'text/html' });
+    const handleDownload = (file: FileData) => {
+        const blob = new Blob([file.content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `generated-page.html`;
+        a.download = file.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
 
-    if (!code) return null;
+    const handleDownloadAll = async () => {
+        const zip = new JSZip();
+
+        files.forEach(file => {
+            zip.file(file.name, file.content);
+        });
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'generated-project.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const getLanguageFromType = (type: string) => {
+        switch (type) {
+            case 'html': return 'html';
+            case 'css': return 'css';
+            case 'javascript': return 'javascript';
+            default: return 'text';
+        }
+    };
+
+    const getFileIcon = (type: string) => {
+        switch (type) {
+            case 'html': return <FileCode className="w-4 h-4" />;
+            case 'css': return <FileCode className="w-4 h-4" />;
+            case 'javascript': return <FileJson className="w-4 h-4" />;
+            default: return <FileCode className="w-4 h-4" />;
+        }
+    };
 
     return (
         <div className="border-t border-neutral-200 dark:border-neutral-800">
@@ -43,6 +85,9 @@ export default function CodeDisplay({ code, language = 'tsx' }: CodeDisplayProps
                 <div className="flex items-center gap-2">
                     <Code2 className="w-4 h-4" />
                     <span className="font-medium">View Code</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                        ({files.length} {files.length === 1 ? 'file' : 'files'})
+                    </span>
                 </div>
                 <span className="text-sm text-neutral-600 dark:text-neutral-400">
                     {isVisible ? 'Hide' : 'Show'}
@@ -52,34 +97,84 @@ export default function CodeDisplay({ code, language = 'tsx' }: CodeDisplayProps
             {/* Code Display */}
             {isVisible && (
                 <div className="border-t border-neutral-200 dark:border-neutral-800">
+                    {/* File Tabs */}
+                    {files.length > 1 && (
+                        <div className="flex items-center gap-1 p-2 bg-neutral-900 border-b border-neutral-800 overflow-x-auto">
+                            {files.map((file, index) => (
+                                <button
+                                    key={file.name}
+                                    onClick={() => setActiveFileIndex(index)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${activeFileIndex === index
+                                            ? 'bg-neutral-800 text-white'
+                                            : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                                        }`}
+                                >
+                                    {getFileIcon(file.type)}
+                                    {file.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Toolbar */}
                     <div className="flex items-center justify-between p-3 bg-neutral-900">
-                        <span className="text-sm text-neutral-400">
-                            {language.toUpperCase()} Code
-                        </span>
+                        <div className="flex items-center gap-2">
+                            {getFileIcon(activeFile.type)}
+                            <span className="text-sm text-neutral-400 font-mono">
+                                {activeFile.name}
+                            </span>
+                            {activeFile.size && (
+                                <span className="text-xs text-neutral-500">
+                                    ({(activeFile.size / 1024).toFixed(1)} KB)
+                                </span>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={handleCopy}
-                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700"
+                                onClick={() => handleCopy(activeFile)}
+                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
                             >
-                                Copy
+                                {copiedFile === activeFile.name ? (
+                                    <>
+                                        <Check className="w-4 h-4 mr-2 text-green-400" />
+                                        Copied!
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="w-4 h-4 mr-2" />
+                                        Copy
+                                    </>
+                                )}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={handleDownload}
-                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700"
+                                onClick={() => handleDownload(activeFile)}
+                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
                             >
                                 <Download className="w-4 h-4 mr-2" />
                                 Download
                             </Button>
+                            {files.length > 1 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleDownloadAll}
+                                    className="bg-purple-600 border-purple-500 hover:bg-purple-700 hover:border-purple-600 text-white transition-all"
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download All (ZIP)
+                                </Button>
+                            )}
                         </div>
                     </div>
 
+                    {/* Code Content */}
                     <div className="max-h-[400px] overflow-auto">
                         <SyntaxHighlighter
-                            language={language}
+                            language={getLanguageFromType(activeFile.type)}
                             style={vscDarkPlus}
                             customStyle={{
                                 margin: 0,
@@ -88,7 +183,7 @@ export default function CodeDisplay({ code, language = 'tsx' }: CodeDisplayProps
                             }}
                             showLineNumbers
                         >
-                            {code}
+                            {activeFile.content}
                         </SyntaxHighlighter>
                     </div>
                 </div>

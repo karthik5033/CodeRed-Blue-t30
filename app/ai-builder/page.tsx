@@ -6,9 +6,10 @@ import PromptInput from '@/components/ai-builder/PromptInput';
 import PreviewPanel from '@/components/ai-builder/PreviewPanel';
 import CustomizationSidebar, { CustomizationOptions } from '@/components/ai-builder/CustomizationSidebar';
 import CodeDisplay from '@/components/ai-builder/CodeDisplay';
+import { FileData } from '@/types/ai-builder';
 
 export default function AIBuilderPage() {
-    const [generatedCode, setGeneratedCode] = useState('');
+    const [generatedFiles, setGeneratedFiles] = useState<FileData[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export default function AIBuilderPage() {
     const handleGenerate = async (prompt: string) => {
         setIsGenerating(true);
         setError(null);
-        setGeneratedCode(''); // Clear previous code
+        setGeneratedFiles([]); // Clear previous files
 
         try {
             const response = await fetch('/api/generate', {
@@ -37,8 +38,6 @@ export default function AIBuilderPage() {
                 throw new Error('No response body');
             }
 
-            let fullCode = '';
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -54,9 +53,8 @@ export default function AIBuilderPage() {
                             throw new Error(data.error);
                         }
 
-                        if (data.done) {
-                            fullCode = data.code;
-                            setGeneratedCode(data.code);
+                        if (data.done && data.files) {
+                            setGeneratedFiles(data.files);
                         }
                     }
                 }
@@ -70,7 +68,7 @@ export default function AIBuilderPage() {
     };
 
     const handleCustomize = async (customizations: CustomizationOptions | { modification: string }) => {
-        if (!generatedCode) return;
+        if (generatedFiles.length === 0) return;
 
         setIsCustomizing(true);
         setError(null);
@@ -80,7 +78,7 @@ export default function AIBuilderPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    code: generatedCode,
+                    files: generatedFiles,
                     ...(('modification' in customizations)
                         ? { modification: customizations.modification }
                         : { customizations }),
@@ -93,7 +91,7 @@ export default function AIBuilderPage() {
             }
 
             const data = await response.json();
-            setGeneratedCode(data.code);
+            setGeneratedFiles(data.files);
         } catch (err) {
             console.error('Customization error:', err);
             setError(err instanceof Error ? err.message : 'Failed to customize page');
@@ -120,8 +118,8 @@ export default function AIBuilderPage() {
 
                 {/* Center: Preview and Code */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Edit Prompt - Only show when code exists */}
-                    {generatedCode && (
+                    {/* Edit Prompt - Only show when files exist */}
+                    {generatedFiles.length > 0 && (
                         <div className="border-b border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50 dark:bg-neutral-900">
                             <div className="flex gap-2">
                                 <input
@@ -154,16 +152,16 @@ export default function AIBuilderPage() {
                     )}
 
                     <div className="flex-1 overflow-hidden">
-                        <PreviewPanel code={generatedCode} isLoading={isGenerating} />
+                        <PreviewPanel files={generatedFiles} isLoading={isGenerating} />
                     </div>
-                    <CodeDisplay code={generatedCode} language="html" />
+                    <CodeDisplay files={generatedFiles} />
                 </div>
 
                 {/* Right: Customization */}
                 <CustomizationSidebar
                     onCustomize={handleCustomize}
                     isLoading={isCustomizing}
-                    hasCode={!!generatedCode}
+                    hasCode={generatedFiles.length > 0}
                 />
             </div>
         </div>

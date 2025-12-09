@@ -3,51 +3,87 @@
 import { useState, useEffect, useRef } from 'react';
 import { Monitor, Smartphone, Tablet, Maximize2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FileData } from '@/types/ai-builder';
 
 interface PreviewPanelProps {
-    code: string;
+    files: FileData[];
     isLoading: boolean;
 }
 
 type ViewportSize = 'mobile' | 'tablet' | 'desktop' | 'fullscreen';
 
-export default function PreviewPanel({ code, isLoading }: PreviewPanelProps) {
+export default function PreviewPanel({ files, isLoading }: PreviewPanelProps) {
     const [viewport, setViewport] = useState<ViewportSize>('desktop');
     const [key, setKey] = useState(0);
+    const [activeHtmlIndex, setActiveHtmlIndex] = useState(0);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const refresh = () => setKey(prev => prev + 1);
 
+    // Get HTML files for multi-page navigation
+    const htmlFiles = files.filter(f => f.type === 'html');
+    const cssFile = files.find(f => f.type === 'css');
+    const jsFile = files.find(f => f.type === 'javascript');
+
     useEffect(() => {
-        if (code && iframeRef.current) {
+        if (files.length > 0 && iframeRef.current) {
             const iframe = iframeRef.current;
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
 
             if (iframeDoc) {
-                // Create a complete HTML document with the generated HTML
-                const html = `
-<!DOCTYPE html>
+                const activeHtml = htmlFiles[activeHtmlIndex];
+
+                if (!activeHtml) return;
+
+                let htmlContent = activeHtml.content;
+
+                // If HTML doesn't have full structure, wrap it
+                if (!htmlContent.includes('<html')) {
+                    htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="img-src * data: blob: 'unsafe-inline';">
+  <title>${activeHtml.name}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    * { box-sizing: border-box; }
-  </style>
+  ${cssFile ? `<style>${cssFile.content}</style>` : ''}
 </head>
 <body>
-  ${code}
+${htmlContent}
+${jsFile ? `<script>${jsFile.content}</script>` : ''}
 </body>
 </html>`;
+                } else {
+                    // Inject CSS and JS into existing HTML
+                    if (cssFile && !htmlContent.includes(cssFile.content)) {
+                        htmlContent = htmlContent.replace(
+                            '</head>',
+                            `<style>${cssFile.content}</style>\n</head>`
+                        );
+                    }
+                    if (jsFile && !htmlContent.includes(jsFile.content)) {
+                        htmlContent = htmlContent.replace(
+                            '</body>',
+                            `<script>${jsFile.content}</script>\n</body>`
+                        );
+                    }
+
+                    // Ensure CSP is present
+                    if (!htmlContent.includes('Content-Security-Policy')) {
+                        htmlContent = htmlContent.replace(
+                            '<head>',
+                            '<head>\n  <meta http-equiv="Content-Security-Policy" content="img-src * data: blob: \'unsafe-inline\';">'
+                        );
+                    }
+                }
 
                 iframeDoc.open();
-                iframeDoc.write(html);
+                iframeDoc.write(htmlContent);
                 iframeDoc.close();
             }
         }
-    }, [code, key]);
+    }, [files, key, activeHtmlIndex, htmlFiles, cssFile, jsFile]);
 
     const viewportSizes = {
         mobile: 'w-[375px]',
@@ -108,7 +144,7 @@ export default function PreviewPanel({ code, isLoading }: PreviewPanelProps) {
                             </p>
                         </div>
                     </div>
-                ) : !code ? (
+                ) : files.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center max-w-md">
                             <Monitor className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
@@ -119,18 +155,38 @@ export default function PreviewPanel({ code, isLoading }: PreviewPanelProps) {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex justify-center">
-                        <div
-                            className={`${viewportSizes[viewport]} ${viewport === 'fullscreen' ? '' : 'max-w-full'
-                                } bg-white dark:bg-neutral-950 shadow-2xl transition-all duration-300`}
-                        >
-                            <iframe
-                                ref={iframeRef}
-                                key={key}
-                                className="w-full h-full min-h-[600px]"
-                                sandbox="allow-scripts allow-same-origin"
-                                title="Preview"
-                            />
+                    <div className="flex flex-col h-full">
+                        {/* Multi-page navigation */}
+                        {htmlFiles.length > 1 && (
+                            <div className="flex gap-2 mb-4">
+                                {htmlFiles.map((file, index) => (
+                                    <button
+                                        key={file.name}
+                                        onClick={() => setActiveHtmlIndex(index)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeHtmlIndex === index
+                                                ? 'bg-purple-600 text-white'
+                                                : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                                            }`}
+                                    >
+                                        {file.name.replace('.html', '')}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex-1 flex justify-center">
+                            <div
+                                className={`${viewportSizes[viewport]} ${viewport === 'fullscreen' ? '' : 'max-w-full'
+                                    } bg-white dark:bg-neutral-950 shadow-2xl transition-all duration-300`}
+                            >
+                                <iframe
+                                    ref={iframeRef}
+                                    key={key}
+                                    className="w-full h-full min-h-[600px]"
+                                    sandbox="allow-scripts allow-same-origin"
+                                    title="Preview"
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
