@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import PromptInput from '@/components/ai-builder/PromptInput';
 import PreviewPanel from '@/components/ai-builder/PreviewPanel';
 import CustomizationSidebar, { CustomizationOptions } from '@/components/ai-builder/CustomizationSidebar';
+import PropertyInspector from '@/components/ai-builder/PropertyInspector';
 import CodeDisplay from '@/components/ai-builder/CodeDisplay';
 import { FileData } from '@/types/ai-builder';
+import { SelectedElement, PropertyChange, EditorMode } from '@/types/visual-editor';
+import { CodeSynchronizer } from '@/lib/code-synchronizer';
 
 export default function AIBuilderPage() {
     const [generatedFiles, setGeneratedFiles] = useState<FileData[]>([]);
@@ -14,6 +17,8 @@ export default function AIBuilderPage() {
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [editorMode, setEditorMode] = useState<EditorMode>('code');
+    const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
 
     const handleGenerate = async (prompt: string) => {
         setIsGenerating(true);
@@ -101,12 +106,142 @@ export default function AIBuilderPage() {
         }
     };
 
+    const handleElementSelect = (element: SelectedElement | null) => {
+        setSelectedElement(element);
+        if (element) {
+            setEditorMode('visual');
+        }
+    };
+
+    const handlePropertyChange = (change: PropertyChange) => {
+        // Get iframe document from PreviewPanel
+        const iframeDoc = document.querySelector('iframe')?.contentDocument;
+
+        if (!iframeDoc) {
+            console.error('Iframe document not found');
+            return;
+        }
+
+        // Apply changes directly to iframe DOM (instant visual update)
+        let element = iframeDoc.querySelector(change.elementPath);
+
+        if (!element) {
+            console.error('Element not found with selector:', change.elementPath);
+            return;
+        }
+
+        // Handle text content separately
+        if (change.property === 'textContent') {
+            element.textContent = change.value;
+
+            // Update selected element state
+            if (selectedElement && selectedElement.path === change.elementPath) {
+                setSelectedElement({
+                    ...selectedElement,
+                    textContent: change.value,
+                });
+            }
+        } else if (change.property === 'src' || change.property === 'alt') {
+            // Handle image attributes
+            element.setAttribute(change.property, change.value);
+
+            // Update selected element state
+            if (selectedElement && selectedElement.path === change.elementPath) {
+                setSelectedElement({
+                    ...selectedElement,
+                    computedStyles: {
+                        ...selectedElement.computedStyles,
+                        [change.property]: change.value,
+                    },
+                });
+            }
+        } else {
+            // Handle style properties
+            const htmlElement = element as HTMLElement;
+            const cssProperty = change.property.replace(/([A-Z])/g, '-$1').toLowerCase();
+            htmlElement.style.setProperty(cssProperty, change.value);
+
+            // Update selected element state
+            if (selectedElement && selectedElement.path === change.elementPath) {
+                setSelectedElement({
+                    ...selectedElement,
+                    computedStyles: {
+                        ...selectedElement.computedStyles,
+                        [change.property]: change.value,
+                    },
+                });
+            }
+        }
+
+        // Extract the updated HTML and update generatedFiles state
+        // This triggers the PreviewPanel's useEffect to reload the iframe with the changes
+        const extractedHTML = CodeSynchronizer.extractHTMLFromIframe(iframeDoc);
+
+        const htmlFiles = generatedFiles.filter(f => f.type === 'html');
+        const otherFiles = generatedFiles.filter(f => f.type !== 'html');
+
+        const updatedHtmlFiles = htmlFiles.map(file => ({
+            ...file,
+            content: extractedHTML
+        }));
+
+        setGeneratedFiles([...updatedHtmlFiles, ...otherFiles]);
+    };
+
+    const handleApplyChanges = () => {
+        // Get iframe document
+        const iframeDoc = document.querySelector('iframe')?.contentDocument;
+        if (!iframeDoc) {
+            console.error('Cannot apply changes: iframe document not found');
+            return;
+        }
+
+        // Extract updated HTML from iframe
+        const htmlFiles = generatedFiles.filter(f => f.type === 'html');
+        const otherFiles = generatedFiles.filter(f => f.type !== 'html');
+
+        // Extract the current state of the iframe (with all inline changes)
+        const extractedHTML = CodeSynchronizer.extractHTMLFromIframe(iframeDoc);
+
+        const updatedHtmlFiles = htmlFiles.map(file => ({
+            ...file,
+            content: extractedHTML
+        }));
+
+        // Update the files state - this will trigger re-render of both preview and code
+        setGeneratedFiles([...updatedHtmlFiles, ...otherFiles]);
+    };
+
     return (
         <div className="h-screen flex flex-col">
             {/* Error Banner */}
             {error && (
                 <div className="bg-red-500 text-white px-4 py-2 text-sm">
                     <strong>Error:</strong> {error}
+                </div>
+            )}
+
+            {/* Mode Toggle - Show when files exist */}
+            {generatedFiles.length > 0 && !isFullscreen && (
+                <div className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 px-4 py-2 flex items-center gap-2">
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400">Mode:</span>
+                    <Button
+                        variant={editorMode === 'visual' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEditorMode('visual')}
+                    >
+                        Visual
+                    </Button>
+                    <Button
+                        variant={editorMode === 'code' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                            setEditorMode('code');
+                            setSelectedElement(null);
+                        }}
+                    >
+                        Code
+                    </Button>
                 </div>
             )}
 
@@ -160,18 +295,41 @@ export default function AIBuilderPage() {
                             isLoading={isGenerating}
                             isFullscreen={isFullscreen}
                             onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                            isSelectionMode={editorMode === 'visual'}
+                            onElementSelect={handleElementSelect}
                         />
                     </div>
-                    {!isFullscreen && <CodeDisplay files={generatedFiles} />}
+                    {!isFullscreen && (
+                        <CodeDisplay
+                            files={generatedFiles}
+                            onCodeChange={(fileIndex, newContent) => {
+                                const updatedFiles = [...generatedFiles];
+                                updatedFiles[fileIndex] = {
+                                    ...updatedFiles[fileIndex],
+                                    content: newContent,
+                                };
+                                setGeneratedFiles(updatedFiles);
+                            }}
+                        />
+                    )}
                 </div>
 
-                {/* Right: Customization - Hide in fullscreen */}
+                {/* Right: Property Inspector (Visual) or Customization (Code) - Hide in fullscreen */}
                 {!isFullscreen && (
-                    <CustomizationSidebar
-                        onCustomize={handleCustomize}
-                        isLoading={isCustomizing}
-                        hasCode={generatedFiles.length > 0}
-                    />
+                    editorMode === 'visual' ? (
+                        <PropertyInspector
+                            selectedElement={selectedElement}
+                            onPropertyChange={handlePropertyChange}
+                            onApplyChanges={handleApplyChanges}
+                            onClose={() => setSelectedElement(null)}
+                        />
+                    ) : (
+                        <CustomizationSidebar
+                            onCustomize={handleCustomize}
+                            isLoading={isCustomizing}
+                            hasCode={generatedFiles.length > 0}
+                        />
+                    )
                 )}
             </div>
         </div>

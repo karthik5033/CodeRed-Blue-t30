@@ -1,24 +1,30 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Monitor, Smartphone, Tablet, Maximize2, RefreshCw } from 'lucide-react';
+import { Monitor, Smartphone, Tablet, Maximize2, RefreshCw, MousePointer2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileData } from '@/types/ai-builder';
+import { SelectedElement } from '@/types/visual-editor';
+import { ElementSelector } from '@/lib/element-selector';
 
 interface PreviewPanelProps {
     files: FileData[];
     isLoading: boolean;
     isFullscreen?: boolean;
     onToggleFullscreen?: () => void;
+    isSelectionMode?: boolean;
+    onElementSelect?: (element: SelectedElement | null) => void;
 }
 
 type ViewportSize = 'mobile' | 'tablet' | 'desktop' | 'fullscreen';
 
-export default function PreviewPanel({ files, isLoading, isFullscreen = false, onToggleFullscreen }: PreviewPanelProps) {
+export default function PreviewPanel({ files, isLoading, isFullscreen = false, onToggleFullscreen, isSelectionMode = false, onElementSelect }: PreviewPanelProps) {
     const [viewport, setViewport] = useState<ViewportSize>('desktop');
     const [key, setKey] = useState(0);
     const [activeHtmlIndex, setActiveHtmlIndex] = useState(0);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const elementSelectorRef = useRef<ElementSelector | null>(null);
+    const skipNextReloadRef = useRef(false);
 
     const refresh = () => setKey(prev => prev + 1);
 
@@ -27,6 +33,7 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
     const cssFile = files.find(f => f.type === 'css');
     const jsFile = files.find(f => f.type === 'javascript');
 
+    // Render iframe content
     useEffect(() => {
         if (files.length > 0 && iframeRef.current) {
             const iframe = iframeRef.current;
@@ -34,10 +41,13 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
 
             if (iframeDoc) {
                 const activeHtml = htmlFiles[activeHtmlIndex];
-
                 if (!activeHtml) return;
 
                 let htmlContent = activeHtml.content;
+
+                // Remove external file references that cause 404 errors
+                htmlContent = htmlContent.replace(/<link[^>]*href=["']style\.css["'][^>]*>/gi, '');
+                htmlContent = htmlContent.replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, '');
 
                 // If HTML doesn't have full structure, wrap it
                 if (!htmlContent.includes('<html')) {
@@ -87,6 +97,49 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
         }
     }, [files, key, activeHtmlIndex, htmlFiles, cssFile, jsFile]);
 
+    // Handle selection mode
+    useEffect(() => {
+        if (!iframeRef.current || !onElementSelect) return;
+
+        if (isSelectionMode) {
+            // Wait for iframe to load before enabling selection
+            const enableSelection = () => {
+                const iframeDoc = iframeRef.current?.contentDocument;
+                if (!iframeDoc || !iframeDoc.body) {
+                    // Retry if iframe not ready
+                    setTimeout(enableSelection, 100);
+                    return;
+                }
+
+                // Always recreate ElementSelector to ensure it works with current iframe
+                if (elementSelectorRef.current) {
+                    elementSelectorRef.current.disable();
+                }
+
+                elementSelectorRef.current = new ElementSelector(
+                    iframeRef.current!,
+                    onElementSelect
+                );
+                elementSelectorRef.current.enable();
+            };
+
+            // Small delay to ensure iframe content is loaded
+            const timer = setTimeout(enableSelection, 150);
+
+            return () => {
+                clearTimeout(timer);
+                if (elementSelectorRef.current) {
+                    elementSelectorRef.current.disable();
+                }
+            };
+        } else {
+            // Disable selection mode
+            if (elementSelectorRef.current) {
+                elementSelectorRef.current.disable();
+            }
+        }
+    }, [isSelectionMode, onElementSelect, files, key]);
+
     const viewportSizes = {
         mobile: 'w-[375px]',
         tablet: 'w-[768px]',
@@ -128,6 +181,16 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
+                    {isSelectionMode && (
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => onElementSelect?.(null)}
+                            title="Exit selection mode"
+                        >
+                            <MousePointer2 className="w-4 h-4" />
+                        </Button>
+                    )}
                 </div>
 
                 <Button variant="outline" size="sm" onClick={refresh}>

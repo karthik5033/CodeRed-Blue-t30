@@ -10,12 +10,15 @@ import JSZip from 'jszip';
 
 interface CodeDisplayProps {
     files: FileData[];
+    onCodeChange?: (fileIndex: number, newContent: string) => void;
 }
 
-export default function CodeDisplay({ files }: CodeDisplayProps) {
+export default function CodeDisplay({ files, onCodeChange }: CodeDisplayProps) {
     const [isVisible, setIsVisible] = useState(false);
     const [activeFileIndex, setActiveFileIndex] = useState(0);
     const [copiedFile, setCopiedFile] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedContent, setEditedContent] = useState('');
 
     if (!files || files.length === 0) return null;
 
@@ -105,8 +108,8 @@ export default function CodeDisplay({ files }: CodeDisplayProps) {
                                     key={file.name}
                                     onClick={() => setActiveFileIndex(index)}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${activeFileIndex === index
-                                            ? 'bg-neutral-800 text-white'
-                                            : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                                        ? 'bg-neutral-800 text-white'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
                                         }`}
                                 >
                                     {getFileIcon(file.type)}
@@ -130,6 +133,26 @@ export default function CodeDisplay({ files }: CodeDisplayProps) {
                             )}
                         </div>
                         <div className="flex gap-2">
+                            {onCodeChange && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        if (isEditing) {
+                                            // Save changes
+                                            onCodeChange(activeFileIndex, editedContent);
+                                            setIsEditing(false);
+                                        } else {
+                                            // Enter edit mode
+                                            setEditedContent(activeFile.content);
+                                            setIsEditing(true);
+                                        }
+                                    }}
+                                    className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
+                                >
+                                    {isEditing ? 'Save' : 'Edit'}
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -173,18 +196,27 @@ export default function CodeDisplay({ files }: CodeDisplayProps) {
 
                     {/* Code Content */}
                     <div className="max-h-[400px] overflow-auto">
-                        <SyntaxHighlighter
-                            language={getLanguageFromType(activeFile.type)}
-                            style={vscDarkPlus}
-                            customStyle={{
-                                margin: 0,
-                                borderRadius: 0,
-                                fontSize: '13px',
-                            }}
-                            showLineNumbers
-                        >
-                            {activeFile.content}
-                        </SyntaxHighlighter>
+                        {isEditing ? (
+                            <textarea
+                                value={editedContent}
+                                onChange={(e) => setEditedContent(e.target.value)}
+                                className="w-full h-[400px] p-4 bg-[#1e1e1e] text-white font-mono text-sm resize-none focus:outline-none"
+                                spellCheck={false}
+                            />
+                        ) : (
+                            <SyntaxHighlighter
+                                language={getLanguageFromType(activeFile.type)}
+                                style={vscDarkPlus}
+                                customStyle={{
+                                    margin: 0,
+                                    borderRadius: 0,
+                                    fontSize: '13px',
+                                }}
+                                showLineNumbers
+                            >
+                                {activeFile.content}
+                            </SyntaxHighlighter>
+                        )}
                     </div>
                 </div>
             )}
