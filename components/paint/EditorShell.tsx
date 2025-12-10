@@ -276,14 +276,14 @@ export default function EditorShell() {
                                 <div className="mb-6 space-y-2">
                                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Common Workflows</h3>
                                     {[
-                                        { label: "Portfolio Website", prompt: "Create a modern Portfolio website with a Hero section, About Me, Project Gallery (grid), and Contact Form." },
-                                        { label: "SaaS Dashboard", prompt: "Build a comprehensive SaaS Dashboard with a sidebar, top metrics cards, revenue chart, and recent activity table." },
-                                        { label: "E-commerce Store", prompt: "Generate an E-commerce flow: Product Listing Page with filters -> Product Details -> Shopping Cart -> Checkout." },
-                                        { label: "Social Media Feed", prompt: "Design a social media feed with a 'Post Input' area, infinite scroll stream of posts (avatar + content), and a right sidebar for trends." },
-                                        { label: "Task Manager (Kanban)", prompt: "Create a Kanban-style Task Manager with columns for 'To Do', 'In Progress', and 'Done', including drag-and-drop visuals." },
-                                        { label: "Login & Auth Flow", prompt: "Build a secure Authentication flow: Login Screen with social buttons -> Forgot Password -> Two-Factor Verification." },
-                                        { label: "AI Chat Interface", prompt: "Design a ChatGPT-style AI interface with a left sidebar for history and a main chat area with input box and message bubbles." },
-                                        { label: "Landing Page (Startup)", prompt: "Create a high-conversion Startup Landing Page with: Sticky Navbar, Value Prop Hero, Feature Grid, Testimonials, and Pricing Table." }
+                                        { label: "Portfolio Website", prompt: "Create a detailed flowchart for a modern Portfolio website with a Hero section, About Me, Project Gallery (grid), and Contact Form." },
+                                        { label: "SaaS Dashboard", prompt: "Build a flowchart for a comprehensive SaaS Dashboard with a sidebar, top metrics cards, revenue chart, and recent activity table." },
+                                        { label: "E-commerce Store", prompt: "Generate an E-commerce flowchart: Product Listing Page with filters -> Product Details -> Shopping Cart -> Checkout." },
+                                        { label: "Social Media Feed", prompt: "Design a flowchart for a social media feed with a 'Post Input' area, infinite scroll stream of posts (avatar + content), and a right sidebar for trends." },
+                                        { label: "Task Manager (Kanban)", prompt: "Create a flowchart for a Kanban-style Task Manager with columns for 'To Do', 'In Progress', and 'Done', including drag-and-drop visuals." },
+                                        { label: "Login & Auth Flow", prompt: "Build a secure Authentication flowchart: Login Screen with social buttons -> Forgot Password -> Two-Factor Verification." },
+                                        { label: "AI Chat Interface", prompt: "Design a flowchart for a ChatGPT-style AI interface with a left sidebar for history and a main chat area with input box and message bubbles." },
+                                        { label: "Landing Page (Startup)", prompt: "Create a high-conversion Startup Landing Page flowchart with: Sticky Navbar, Value Prop Hero, Feature Grid, Testimonials, and Pricing Table." }
                                     ].map((item, i) => (
                                         <button
                                             key={i}

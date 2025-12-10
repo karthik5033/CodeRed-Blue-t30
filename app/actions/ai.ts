@@ -40,7 +40,7 @@ export const generateChatResponse = async (history: { role: "user" | "model"; pa
                 parts: [{ text: h.parts }]
             })),
             generationConfig: {
-                maxOutputTokens: 1000,
+                maxOutputTokens: 8192,
             },
         });
 

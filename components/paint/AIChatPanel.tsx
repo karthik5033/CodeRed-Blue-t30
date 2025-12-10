@@ -68,37 +68,71 @@ export default function AIChatPanel({ onApplyFlow, forceMessage }: AIChatPanelPr
 
             const responseText = await generateChatResponse(history, text);
 
-            // 🔹 Extract JSON Flow Data if present
-            // Regex handles:
-            // 1. ```json ... ``` (multiline or inline)
-            // 2. ``` ... ``` (generic block if it looks like JSON)
-            // 3. Raw JSON object starting with { "nodes": ...
-            const jsonMatch = responseText.match(/```(?:json)?\s*({[\s\S]*?"nodes"[\s\S]*?"edges"[\s\S]*?})\s*```/) ||
-                responseText.match(/({[\s\S]*?"nodes"[\s\S]*?"edges"[\s\S]*?})/);
+            // 🔹 Extract JSON Flow Data using brace counting
+            const extractBalancedJSON = (text: string): string | null => {
+                const startIndex = text.indexOf('{');
+                if (startIndex === -1) return null;
 
-            let displayString = responseText;
+                let braceCount = 0;
+                let inString = false;
+                let escape = false;
+                let endIndex = -1;
 
-            if (jsonMatch && onApplyFlow) {
+                for (let i = startIndex; i < text.length; i++) {
+                    const char = text[i];
+
+                    if (!escape && char === '"') {
+                        inString = !inString;
+                    }
+
+                    if (!inString) {
+                        if (char === '{') {
+                            braceCount++;
+                        } else if (char === '}') {
+                            braceCount--;
+                            if (braceCount === 0) {
+                                endIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (char === '\\' && !escape) {
+                        escape = true;
+                    } else {
+                        escape = false;
+                    }
+                }
+
+                if (endIndex !== -1) {
+                    return text.substring(startIndex, endIndex + 1);
+                }
+                return null;
+            };
+
+            const extractedJson = extractBalancedJSON(responseText);
+
+            if (extractedJson && onApplyFlow) {
                 try {
-                    const jsonStr = jsonMatch[1] || jsonMatch[0];
-                    const flowData = JSON.parse(jsonStr);
+                    const flowData = JSON.parse(extractedJson);
+
                     if (flowData.nodes && flowData.edges) {
                         onApplyFlow(flowData.nodes, flowData.edges);
 
-                        // Strip the JSON from the displayed message to keep it clean
-                        displayString = responseText.replace(jsonMatch[0], "").trim();
-                        if (!displayString) displayString = "✅ Canvas updated with the requested flow.";
+                        // Success! Show a clean confirmation instead of the raw JSON
+                        const successMsg = "✅ Canvas updated with the requested flow.\n\n" +
+                            (responseText.replace(extractedJson, "").trim() || "You can now edit the nodes or generate the app.");
 
-                        // Add a small delay/msg for UI feedback
-                        setMessages((prev) => [...prev, { role: "ai", text: displayString }]);
-                        return; // Stop here, don't add the duplicate message below
+                        setMessages((prev) => [...prev, { role: "ai", text: successMsg }]);
+                        return;
                     }
                 } catch (e) {
                     console.error("Failed to parse AI flow JSON", e);
+                    // Fallthrough to show raw text if parsing failed so user can see what happened
                 }
             }
 
-            setMessages((prev) => [...prev, { role: "ai", text: displayString }]);
+            setMessages((prev) => [...prev, { role: "ai", text: responseText }]);
         } catch (error) {
             setMessages((prev) => [...prev, { role: "ai", text: "Sorry, I'm having trouble connecting right now." }]);
         } finally {

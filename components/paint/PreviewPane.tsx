@@ -121,7 +121,10 @@ export default function PreviewPane({ code, isGenerating, tokenStats }: PreviewP
               "react-xarrows": "2.0.2",
               "react-use-gesture": "9.1.3",
               "framer-motion": "10.16.4",
-              "react-router-dom": "6.22.3"
+              "react-router-dom": "6.22.3",
+              "typed.js": "2.0.12",
+              "recharts": "2.12.0",
+              "date-fns": "latest"
             }
           }}
           options={{
