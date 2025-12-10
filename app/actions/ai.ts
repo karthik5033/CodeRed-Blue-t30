@@ -61,15 +61,26 @@ export const generateAppBoilerplate = async (flowData: any) => {
     
     CRITICAL RULES:
     1. Return ONLY the code.
-    2. Do NOT import custom components (like "@/components/ui/..."). Define all small components (Buttons, Cards) inside the same file if needed.
+    2. Do NOT import custom components. Define everything (Buttons, Cards, Navbar) inside this file.
     3. Use 'lucide-react' for icons.
-    4. Use standard HTML/Tailwind classes for styling.
+    4. Use standard HTML/Tailwind classes.
     5. The default export must be named 'App'.
     6. Wrap the code in \`\`\`tsx\`\`\`.
-    7. IMPORTANT: Do NOT generate a flowchart view. Convert the flow logic into a REAL Web Application UI.
-       - If the flow is a "Portfolio", generate a Portfolio Landing Page.
-       - If the flow is a "Checkout", generate a Checkout Form.
-       - Use standard Flexbox/Grid layouts. NO absolute positioning. NO 'react-xarrows'.
+    
+    PREMIUM UI & LOGIC INSTRUCTIONS:
+    - **Visual Style**: Modern SaaS, clean, "Inter" font, rounded-xl, subtle borders, soft shadows, gradients. Use 'framer-motion' for simple entrance animations.
+    - **Structure**: If the flow implies multiple screens (e.g., Home -> Dashboard), use 'react-router-dom' (HashRouter) to implement real navigation.
+    - **"Backend"**: Since this is a demo, MOCK all API calls. Use 'useState' and 'useEffect' with 'setTimeout' to simulate data fetching (loading states).
+    - **Responsiveness**: **MOBILE-FIRST DESIGN**. The preview is often a narrow sidebar (400px width). 
+       - Use 'w-full', 'max-w-full'. 
+       - Avoid large headers (e.g. use 'text-3xl' max, not 'text-6xl'). 
+       - Use 'flex-col' by default for layouts, switch to 'md:flex-row' only on larger generic widths.
+    - **Content**: Do not leave pages empty. Generate realistic placeholder content (charts, lists, text) relevant to the flow.
+    
+    SCENARIO MAPPING:
+    - Flow = "Portfolio" -> Generate a Multi-Section Landing Page (Hero, Projects, Bio, Contact) with smooth scrolling.
+    - Flow = "SaaS" -> Generate a Landing Page + Dashboard Login + Dashboard View.
+    - Flow = "E-commerce" -> Generate a Product Grid + Cart + Checkout Flow.
     `;
 
         const result = await model.generateContent(prompt);

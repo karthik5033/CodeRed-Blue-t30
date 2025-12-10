@@ -321,18 +321,15 @@ export default function EditorShell() {
                         </PanelResizeHandle>
 
                         {/* ---------------- RIGHT PREVIEW ---------------- */}
-                        <Panel defaultSize={25} minSize={15} maxSize={40} className="flex flex-col bg-slate-50/50 p-6">
+                        <Panel defaultSize={35} minSize={25} maxSize={60} className="flex flex-col bg-slate-50/50 p-6">
                             <div className="mb-6">
                                 <h2 className="text-base font-bold text-slate-900 mb-1">Live Preview</h2>
                                 <p className="text-sm text-slate-500">Generated UI updates instantly.</p>
                             </div>
 
-                            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                                <div className="flex-1 overflow-hidden relative">
+                            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full w-full">
+                                <div className="flex-1 overflow-hidden relative h-full w-full">
                                     <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} />
-                                </div>
-                                <div className="p-3 text-center text-xs text-gray-400 border-t border-gray-100 italic">
-                                    Live App Preview Coming Soon
                                 </div>
                             </div>
                         </Panel>

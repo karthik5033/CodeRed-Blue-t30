@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
+import { SandpackProvider, SandpackPreview, SandpackConsole, SandpackLayout } from "@codesandbox/sandpack-react";
 
 interface PreviewPaneProps {
   code?: string;
@@ -24,6 +24,7 @@ const DEFAULT_CODE = `export default function App() {
 
 export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
   const [showCode, setShowCode] = React.useState(false);
+  const [showConsole, setShowConsole] = React.useState(false);
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -32,12 +33,20 @@ export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
           <span className="font-semibold text-gray-700">Live Preview</span>
           <span className="px-1.5 py-0.5 bg-gray-200 rounded text-[10px]">React + Tailwind</span>
         </div>
-        <button
-          onClick={() => setShowCode(!showCode)}
-          className="text-indigo-600 hover:text-indigo-700 font-medium underline decoration-dotted"
-        >
-          {showCode ? "Hide Code" : "Show Code"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowConsole(!showConsole)}
+            className={`font-medium underline decoration-dotted transition-colors ${showConsole ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+          >
+            {showConsole ? "Hide Console" : "Console"}
+          </button>
+          <button
+            onClick={() => setShowCode(!showCode)}
+            className={`font-medium underline decoration-dotted transition-colors ${showCode ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+          >
+            {showCode ? "Hide Code" : "Code"}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 relative overflow-hidden bg-slate-50">
@@ -66,36 +75,54 @@ export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
             <p className="text-xs mt-1">Build a flow and click "Generate App"</p>
           </div>
         ) : (
-          <SandpackProvider
-            key={code}
-            template="react-ts"
-            theme="light"
-            files={{
-              "/App.tsx": code,
-            }}
-            customSetup={{
-              dependencies: {
-                "lucide-react": "latest",
-                "clsx": "latest",
-                "tailwind-merge": "latest",
-                "react-xarrows": "latest",
-                "react-use-gesture": "latest",
-                "framer-motion": "latest",
-                "react-router-dom": "latest"
-              }
-            }}
-            options={{
-              externalResources: ["https://cdn.tailwindcss.com"]
-            }}
-          >
-            <SandpackPreview
-              style={{ height: "100%" }}
-              showOpenInCodeSandbox={false}
-              showRefreshButton={true}
-            />
-          </SandpackProvider>
-        )}
-      </div>
-    </div>
+
+          <div className="h-full w-full">
+            <SandpackProvider
+              key={code}
+              template="react-ts"
+              theme="light"
+              files={{
+                "/App.tsx": code,
+              }}
+              customSetup={{
+                dependencies: {
+                  "react": "18.2.0",
+                  "react-dom": "18.2.0",
+                  "lucide-react": "latest",
+                  "clsx": "latest",
+                  "tailwind-merge": "latest",
+                  "react-xarrows": "2.0.2",
+                  "react-use-gesture": "9.1.3",
+                  "framer-motion": "10.16.4",
+                  "react-router-dom": "6.22.3"
+                }
+              }}
+              options={{
+                externalResources: ["https://cdn.tailwindcss.com"],
+                classes: {
+                  "sp-wrapper": "h-full w-full",
+                  "sp-layout": "h-full w-full",
+                }
+              }}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <SandpackLayout style={{ height: "100%", width: "100%", flexDirection: "column", display: "flex", borderRadius: 0 }}>
+                <SandpackPreview
+                  style={{ flex: 1, height: "100%", width: "100%", minHeight: 0 }}
+                  showOpenInCodeSandbox={false}
+                  showRefreshButton={true}
+                />
+                {showConsole && (
+                  <div className="h-32 border-t border-gray-200 bg-white transition-all shrink-0">
+                    <SandpackConsole style={{ height: "100%" }} />
+                  </div>
+                )}
+              </SandpackLayout>
+            </SandpackProvider>
+          </div>
+        )
+        }
+      </div >
+    </div >
   );
 }
