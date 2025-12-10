@@ -1,28 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import { Code2, Download, Copy, Check, FileCode, FileJson } from 'lucide-react';
+import { Code2, Download, Copy, Check, FileCode, FileJson, Folder, FolderOpen, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FileData } from '@/types/ai-builder';
+import { FileData, ProjectStructure } from '@/types/ai-builder';
 import JSZip from 'jszip';
 
 interface CodeDisplayProps {
     files: FileData[];
+    structure?: ProjectStructure;
     onCodeChange?: (fileIndex: number, newContent: string) => void;
 }
 
-export default function CodeDisplay({ files, onCodeChange }: CodeDisplayProps) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [activeFileIndex, setActiveFileIndex] = useState(0);
+export default function CodeDisplay({ files, structure, onCodeChange }: CodeDisplayProps) {
+    const [isVisible, setIsVisible] = useState(true);
+    const [activeFilePath, setActiveFilePath] = useState<string>('');
     const [copiedFile, setCopiedFile] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState('');
+    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
     if (!files || files.length === 0) return null;
 
-    const activeFile = files[activeFileIndex];
+    const activeFile = files.find(f => f.path === activeFilePath) || files[0];
+    const activeFileIndex = files.findIndex(f => f.path === activeFilePath);
 
     const handleCopy = async (file: FileData) => {
         await navigator.clipboard.writeText(file.content);
@@ -45,8 +48,9 @@ export default function CodeDisplay({ files, onCodeChange }: CodeDisplayProps) {
     const handleDownloadAll = async () => {
         const zip = new JSZip();
 
+        // Add files with folder structure
         files.forEach(file => {
-            zip.file(file.name, file.content);
+            zip.file(file.path, file.content);
         });
 
         const blob = await zip.generateAsync({ type: 'blob' });
@@ -61,162 +65,214 @@ export default function CodeDisplay({ files, onCodeChange }: CodeDisplayProps) {
     };
 
     const getLanguageFromType = (type: string) => {
-        switch (type) {
-            case 'html': return 'html';
-            case 'css': return 'css';
-            case 'javascript': return 'javascript';
-            default: return 'text';
-        }
+        const langMap: Record<string, string> = {
+            html: 'html',
+            css: 'css',
+            javascript: 'javascript',
+            typescript: 'typescript',
+            jsx: 'jsx',
+            tsx: 'tsx',
+            json: 'json',
+            markdown: 'markdown',
+            env: 'bash',
+            text: 'text',
+        };
+        return langMap[type] || 'text';
     };
 
     const getFileIcon = (type: string) => {
         switch (type) {
-            case 'html': return <FileCode className="w-4 h-4" />;
-            case 'css': return <FileCode className="w-4 h-4" />;
-            case 'javascript': return <FileJson className="w-4 h-4" />;
-            default: return <FileCode className="w-4 h-4" />;
+            case 'html':
+            case 'jsx':
+            case 'tsx':
+                return <FileCode className="w-4 h-4 text-blue-400" />;
+            case 'css':
+                return <FileCode className="w-4 h-4 text-purple-400" />;
+            case 'javascript':
+            case 'typescript':
+                return <FileJson className="w-4 h-4 text-yellow-400" />;
+            case 'json':
+                return <FileJson className="w-4 h-4 text-green-400" />;
+            default:
+                return <FileCode className="w-4 h-4 text-gray-400" />;
         }
+    };
+
+    const toggleFolder = (path: string) => {
+        const newExpanded = new Set(expandedFolders);
+        if (newExpanded.has(path)) {
+            newExpanded.delete(path);
+        } else {
+            newExpanded.add(path);
+        }
+        setExpandedFolders(newExpanded);
+    };
+
+    const renderStructureNode = (node: ProjectStructure, depth: number = 0) => {
+        const isExpanded = expandedFolders.has(node.path);
+        const isActive = node.type === 'file' && node.path === activeFilePath;
+
+        if (node.type === 'folder') {
+            return (
+                <div key={node.path}>
+                    <button
+                        onClick={() => toggleFolder(node.path)}
+                        className="w-full flex items-center gap-2 px-2 py-1 hover:bg-neutral-800 rounded text-sm"
+                        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-neutral-400" />
+                        ) : (
+                            <ChevronRight className="w-4 h-4 text-neutral-400" />
+                        )}
+                        {isExpanded ? (
+                            <FolderOpen className="w-4 h-4 text-blue-400" />
+                        ) : (
+                            <Folder className="w-4 h-4 text-blue-400" />
+                        )}
+                        <span className="text-neutral-300">{node.name}</span>
+                    </button>
+                    {isExpanded && node.children && (
+                        <div>
+                            {node.children.map(child => renderStructureNode(child, depth + 1))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <button
+                key={node.path}
+                onClick={() => {
+                    setActiveFilePath(node.path);
+                    setIsEditing(false);
+                }}
+                className={`w-full flex items-center gap-2 px-2 py-1 hover:bg-neutral-800 rounded text-sm ${isActive ? 'bg-neutral-800' : ''
+                    }`}
+                style={{ paddingLeft: `${depth * 12 + 24}px` }}
+            >
+                {node.file && getFileIcon(node.file.type)}
+                <span className={`${isActive ? 'text-white' : 'text-neutral-400'}`}>
+                    {node.name}
+                </span>
+            </button>
+        );
     };
 
     return (
         <div className="border-t border-neutral-200 dark:border-neutral-800">
-            {/* Toggle Button */}
-            <button
-                onClick={() => setIsVisible(!isVisible)}
-                className="w-full p-3 flex items-center justify-between bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            >
-                <div className="flex items-center gap-2">
-                    <Code2 className="w-4 h-4" />
-                    <span className="font-medium">View Code</span>
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        ({files.length} {files.length === 1 ? 'file' : 'files'})
-                    </span>
-                </div>
-                <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {isVisible ? 'Hide' : 'Show'}
-                </span>
-            </button>
-
-            {/* Code Display */}
+            {/* Code Display - Always Visible */}
             {isVisible && (
-                <div className="border-t border-neutral-200 dark:border-neutral-800">
-                    {/* File Tabs */}
-                    {files.length > 1 && (
-                        <div className="flex items-center gap-1 p-2 bg-neutral-900 border-b border-neutral-800 overflow-x-auto">
-                            {files.map((file, index) => (
-                                <button
-                                    key={file.name}
-                                    onClick={() => setActiveFileIndex(index)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${activeFileIndex === index
-                                        ? 'bg-neutral-800 text-white'
-                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                                        }`}
-                                >
-                                    {getFileIcon(file.type)}
-                                    {file.name}
-                                </button>
-                            ))}
+                <div className="border-t border-neutral-200 dark:border-neutral-800 flex" style={{ height: '500px' }}>
+                    {/* File Explorer Sidebar */}
+                    {structure && (
+                        <div className="w-64 bg-neutral-900 border-r border-neutral-800 overflow-y-auto">
+                            <div className="p-2">
+                                <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">
+                                    Project Files
+                                </div>
+                                {structure.children?.map(child => renderStructureNode(child, 0))}
+                            </div>
                         </div>
                     )}
 
-                    {/* Toolbar */}
-                    <div className="flex items-center justify-between p-3 bg-neutral-900">
-                        <div className="flex items-center gap-2">
-                            {getFileIcon(activeFile.type)}
-                            <span className="text-sm text-neutral-400 font-mono">
-                                {activeFile.name}
-                            </span>
-                            {activeFile.size && (
-                                <span className="text-xs text-neutral-500">
-                                    ({(activeFile.size / 1024).toFixed(1)} KB)
+                    {/* Code Editor */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Toolbar */}
+                        <div className="flex items-center justify-between p-3 bg-neutral-900 border-b border-neutral-800">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {getFileIcon(activeFile.type)}
+                                <span className="text-sm text-neutral-400 font-mono truncate">
+                                    {activeFile.path}
                                 </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            {onCodeChange && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        if (isEditing) {
-                                            // Save changes
-                                            onCodeChange(activeFileIndex, editedContent);
-                                            setIsEditing(false);
-                                        } else {
-                                            // Enter edit mode
-                                            setEditedContent(activeFile.content);
-                                            setIsEditing(true);
-                                        }
-                                    }}
-                                    className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
-                                >
-                                    {isEditing ? 'Save' : 'Edit'}
-                                </Button>
-                            )}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCopy(activeFile)}
-                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
-                            >
-                                {copiedFile === activeFile.name ? (
-                                    <>
-                                        <Check className="w-4 h-4 mr-2 text-green-400" />
-                                        Copied!
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="w-4 h-4 mr-2" />
-                                        Copy
-                                    </>
+                                {activeFile.size && (
+                                    <span className="text-xs text-neutral-500 whitespace-nowrap">
+                                        ({(activeFile.size / 1024).toFixed(1)} KB)
+                                    </span>
                                 )}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownload(activeFile)}
-                                className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all"
-                            >
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                            </Button>
-                            {files.length > 1 && (
+                            </div>
+                            <div className="flex gap-1 ml-2 flex-shrink-0">
+                                {onCodeChange && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (isEditing) {
+                                                onCodeChange(activeFileIndex, editedContent);
+                                                setIsEditing(false);
+                                            } else {
+                                                setEditedContent(activeFile.content);
+                                                setIsEditing(true);
+                                            }
+                                        }}
+                                        className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all h-7 px-2"
+                                        title={isEditing ? 'Save' : 'Edit'}
+                                    >
+                                        {isEditing ? '💾' : '✏️'}
+                                    </Button>
+                                )}
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={handleDownloadAll}
-                                    className="bg-purple-600 border-purple-500 hover:bg-purple-700 hover:border-purple-600 text-white transition-all"
+                                    onClick={() => handleCopy(activeFile)}
+                                    className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all h-7 px-2"
+                                    title="Copy code"
                                 >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download All (ZIP)
+                                    {copiedFile === activeFile.name ? (
+                                        <Check className="w-3 h-3 text-green-400" />
+                                    ) : (
+                                        <Copy className="w-3 h-3" />
+                                    )}
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownload(activeFile)}
+                                    className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all h-7 px-2"
+                                    title="Download file"
+                                >
+                                    <Download className="w-3 h-3" />
+                                </Button>
+                                {files.length > 1 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDownloadAll}
+                                        className="bg-purple-600 border-purple-500 hover:bg-purple-700 hover:border-purple-600 text-white transition-all h-7 px-2"
+                                        title="Download all files as ZIP"
+                                    >
+                                        📦
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Code Content */}
+                        <div className="flex-1 overflow-auto">
+                            {isEditing ? (
+                                <textarea
+                                    value={editedContent}
+                                    onChange={(e) => setEditedContent(e.target.value)}
+                                    className="w-full h-full p-4 bg-[#1e1e1e] text-white font-mono text-sm resize-none focus:outline-none"
+                                    spellCheck={false}
+                                />
+                            ) : (
+                                <SyntaxHighlighter
+                                    language={getLanguageFromType(activeFile.type)}
+                                    style={vscDarkPlus}
+                                    customStyle={{
+                                        margin: 0,
+                                        borderRadius: 0,
+                                        fontSize: '13px',
+                                        height: '100%',
+                                    }}
+                                    showLineNumbers
+                                >
+                                    {activeFile.content}
+                                </SyntaxHighlighter>
                             )}
                         </div>
-                    </div>
-
-                    {/* Code Content */}
-                    <div className="max-h-[400px] overflow-auto">
-                        {isEditing ? (
-                            <textarea
-                                value={editedContent}
-                                onChange={(e) => setEditedContent(e.target.value)}
-                                className="w-full h-[400px] p-4 bg-[#1e1e1e] text-white font-mono text-sm resize-none focus:outline-none"
-                                spellCheck={false}
-                            />
-                        ) : (
-                            <SyntaxHighlighter
-                                language={getLanguageFromType(activeFile.type)}
-                                style={vscDarkPlus}
-                                customStyle={{
-                                    margin: 0,
-                                    borderRadius: 0,
-                                    fontSize: '13px',
-                                }}
-                                showLineNumbers
-                            >
-                                {activeFile.content}
-                            </SyntaxHighlighter>
-                        )}
                     </div>
                 </div>
             )}

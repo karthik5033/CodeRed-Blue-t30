@@ -65,15 +65,17 @@ export async function POST(request: NextRequest) {
                         );
                     }
 
-                    // Extract and validate files
-                    const files = parseAIResponse(fullResponse);
+                    // Extract and validate files with structure
+                    const { files, structure, database } = parseAIResponse(fullResponse);
 
-                    // Send final files
+                    // Send final files with structure
                     controller.enqueue(
                         encoder.encode(
                             `data: ${JSON.stringify({
                                 done: true,
                                 files,
+                                structure,
+                                database,
                                 fullResponse
                             })}\n\n`
                         )

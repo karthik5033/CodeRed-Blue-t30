@@ -1,0 +1,362 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Database, RefreshCw, Table, FileJson, AlertCircle, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DatabaseSchema } from '@/types/ai-builder';
+
+interface DatabaseViewerProps {
+    schema?: DatabaseSchema;
+    onExpandChange?: (isExpanded: boolean) => void;
+}
+
+export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewerProps) {
+    const [selectedTable, setSelectedTable] = useState<string>('');
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const [tables, setTables] = useState<string[]>([]);
+    const [viewMode, setViewMode] = useState<'json' | 'analysis'>('analysis');
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    // Auto-connect and fetch tables on mount
+    useEffect(() => {
+        fetchTables();
+    }, []);
+
+    const fetchTables = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/database?action=tables');
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const tableNames = result.data.map((t: any) => t.name);
+                setTables(tableNames);
+                if (tableNames.length > 0) {
+                    setSelectedTable(tableNames[0]);
+                    setIsConnected(true);
+                }
+            } else {
+                // If no tables, try to use schema
+                if (schema?.collections) {
+                    const schemaTableNames = schema.collections.map(c => c.name);
+                    setTables(schemaTableNames);
+                    if (schemaTableNames.length > 0) {
+                        setSelectedTable(schemaTableNames[0]);
+                        setIsConnected(true);
+                    }
+                }
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadDocuments = async (tableName: string) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`/api/database?action=data&table=${tableName}`);
+            const result = await response.json();
+            if (result.success) {
+                setDocuments(result.data || []);
+            } else {
+                setError(result.error);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedTable && isConnected) {
+            loadDocuments(selectedTable);
+        }
+    }, [selectedTable, isConnected]);
+
+    const deleteTable = async (tableName: string) => {
+        if (!confirm(`Are you sure you want to permanently delete the table "${tableName}"? This cannot be undone.`)) {
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_table',
+                    table: tableName
+                })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                // Refresh tables list
+                await fetchTables();
+                setSelectedTable('');
+            } else {
+                setError(result.error);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Helper to parse JSON strings in data
+    const parseValue = (value: any) => {
+        if (typeof value === 'string') {
+            try {
+                // Try to parse as JSON
+                const parsed = JSON.parse(value);
+                return parsed;
+            } catch {
+                return value;
+            }
+        }
+        return value;
+    };
+
+    // Removed early return - now works without schema!
+
+    return (
+        <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900">
+            {/* Header */}
+            <div className="border-b border-neutral-200 dark:border-neutral-800 p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Database className="w-5 h-5 text-purple-500" />
+                        <h2 className="text-lg font-semibold">Local Database</h2>
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                            SQLite
+                        </span>
+                    </div>
+                    {isConnected && (
+                        <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    const newExpanded = !isExpanded;
+                                    setIsExpanded(newExpanded);
+                                    onExpandChange?.(newExpanded);
+                                }}
+                                className="ml-2"
+                            >
+                                {isExpanded ? '⬇️ Collapse' : '⬆️ Expand'}
+                            </Button>
+                        </div>
+                    )}
+                </div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Local file-based database - no connection string needed
+                </p>
+            </div>
+
+            {error && (
+                <div className="mx-4 mt-4 flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                </div>
+            )}
+
+            {/* Content */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Tables Sidebar */}
+                <div className="w-64 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto">
+                    <div className="p-2">
+                        <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">
+                            Tables
+                        </div>
+                        {tables.length > 0 ? (
+                            tables.map((tableName) => (
+                                <button
+                                    key={tableName}
+                                    onClick={() => setSelectedTable(tableName)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${selectedTable === tableName
+                                        ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300'
+                                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                                        }`}
+                                >
+                                    <Table className="w-4 h-4" />
+                                    <span className="font-mono">{tableName}</span>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="text-center text-sm text-neutral-500 p-4">
+                                No tables yet. Add data in the preview!
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Documents View */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="border-b border-neutral-200 dark:border-neutral-800 p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-semibold">
+                                {selectedTable || 'Select a table'}
+                            </span>
+                            {selectedTable && (
+                                <span className="text-xs text-neutral-500">
+                                    ({documents.length} {documents.length === 1 ? 'record' : 'records'})
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {selectedTable && (
+                                <div className="flex gap-1 mr-2">
+                                    <Button
+                                        size="sm"
+                                        variant={viewMode === 'analysis' ? 'default' : 'outline'}
+                                        onClick={() => setViewMode('analysis')}
+                                    >
+                                        📊 Analysis
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={viewMode === 'json' ? 'default' : 'outline'}
+                                        onClick={() => setViewMode('json')}
+                                    >
+                                        📄 JSON
+                                    </Button>
+                                </div>
+                            )}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => selectedTable && loadDocuments(selectedTable)}
+                                disabled={isLoading || !selectedTable}
+                            >
+                                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                                Refresh
+                            </Button>
+                            {selectedTable && (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => deleteTable(selectedTable)}
+                                    disabled={isLoading}
+                                >
+                                    🗑️ Delete Table
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-auto p-4">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                                <RefreshCw className="w-8 h-8 text-neutral-400 animate-spin" />
+                            </div>
+                        ) : documents.length > 0 ? (
+                            viewMode === 'analysis' ? (
+                                // Analysis View - Formatted Table
+                                <div className="space-y-4">
+                                    {/* Statistics */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                                            <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Total Records</div>
+                                            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{documents.length}</div>
+                                        </div>
+                                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                                            <div className="text-xs text-green-600 dark:text-green-400 font-medium">Fields</div>
+                                            <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                                                {documents[0] ? Object.keys(documents[0]).length : 0}
+                                            </div>
+                                        </div>
+                                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                                            <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Table</div>
+                                            <div className="text-lg font-bold text-purple-700 dark:text-purple-300 truncate">{selectedTable}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Data Table */}
+                                    <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-neutral-100 dark:bg-neutral-800">
+                                                    <tr>
+                                                        {documents[0] && Object.keys(documents[0]).map((key) => (
+                                                            <th key={key} className="px-4 py-2 text-left font-semibold text-neutral-700 dark:text-neutral-300 border-b border-neutral-200 dark:border-neutral-700">
+                                                                {key}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {documents.map((doc, index) => (
+                                                        <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                                                            {Object.entries(doc).map(([key, value]) => {
+                                                                const parsedValue = parseValue(value);
+                                                                return (
+                                                                    <td key={key} className="px-4 py-2 border-b border-neutral-200 dark:border-neutral-700">
+                                                                        {typeof parsedValue === 'object' && parsedValue !== null ? (
+                                                                            <details className="cursor-pointer">
+                                                                                <summary className="text-blue-600 dark:text-blue-400 font-mono text-xs">
+                                                                                    {Array.isArray(parsedValue) ? `Array[${parsedValue.length}]` : 'Object'}
+                                                                                </summary>
+                                                                                <pre className="mt-1 text-xs font-mono bg-neutral-100 dark:bg-neutral-900 p-2 rounded overflow-x-auto">
+                                                                                    {JSON.stringify(parsedValue, null, 2)}
+                                                                                </pre>
+                                                                            </details>
+                                                                        ) : (
+                                                                            <span className="font-mono text-xs">{String(parsedValue)}</span>
+                                                                        )}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                // JSON View - Original
+                                <div className="space-y-3">
+                                    {documents.map((doc, index) => (
+                                        <div
+                                            key={index}
+                                            className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 bg-white dark:bg-neutral-800"
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <FileJson className="w-4 h-4 text-green-500" />
+                                                <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                                                    ID: {doc.id}
+                                                </span>
+                                            </div>
+                                            <pre className="text-xs font-mono overflow-x-auto">
+                                                {JSON.stringify(doc, null, 2)}
+                                            </pre>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-neutral-500 dark:text-neutral-400">
+                                <div className="text-center">
+                                    <FileJson className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                    <p>No data yet</p>
+                                    <p className="text-xs mt-1">Data will appear here when you use the app</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div >
+    );
+}

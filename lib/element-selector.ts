@@ -39,7 +39,7 @@ export class ElementSelector {
      */
     disable() {
         const iframeDoc = this.iframe.contentDocument;
-        if (!iframeDoc) return;
+        if (!iframeDoc || !iframeDoc.body) return;
 
         iframeDoc.removeEventListener('click', this.handleClick, true);
         iframeDoc.removeEventListener('mouseover', this.handleHover, true);

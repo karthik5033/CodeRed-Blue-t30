@@ -1,24 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import PromptInput from '@/components/ai-builder/PromptInput';
 import PreviewPanel from '@/components/ai-builder/PreviewPanel';
 import CustomizationSidebar, { CustomizationOptions } from '@/components/ai-builder/CustomizationSidebar';
 import PropertyInspector from '@/components/ai-builder/PropertyInspector';
 import CodeDisplay from '@/components/ai-builder/CodeDisplay';
-import { FileData } from '@/types/ai-builder';
+import DatabaseViewer from '@/components/ai-builder/DatabaseViewer';
+import { FileData, ProjectStructure, DatabaseSchema } from '@/types/ai-builder';
 import { SelectedElement, PropertyChange, EditorMode } from '@/types/visual-editor';
 import { CodeSynchronizer } from '@/lib/code-synchronizer';
 
+type ViewTab = 'code' | 'database';
+
 export default function AIBuilderPage() {
     const [generatedFiles, setGeneratedFiles] = useState<FileData[]>([]);
+    const [projectStructure, setProjectStructure] = useState<ProjectStructure | undefined>();
+    const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema | undefined>();
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [editorMode, setEditorMode] = useState<EditorMode>('code');
     const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
+    const [activeTab, setActiveTab] = useState<ViewTab>('code');
+    const [showCodePanel, setShowCodePanel] = useState(false);
+    const [codePanelHeight, setCodePanelHeight] = useState(350);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartY, setDragStartY] = useState(0);
+    const [dragStartHeight, setDragStartHeight] = useState(0);
+    const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+    const [showLeftPanel, setShowLeftPanel] = useState(true);
+    const [showRightPanel, setShowRightPanel] = useState(true);
+
+
+    // Handle panel resize
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragStartY(e.clientY);
+        setDragStartHeight(codePanelHeight);
+        e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging) return;
+
+        const deltaY = dragStartY - e.clientY;
+        const newHeight = dragStartHeight + deltaY;
+
+        // Restrict: min 200px, max 80% of window height
+        const minHeight = 200;
+        const maxHeight = window.innerHeight * 0.8;
+        const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+
+        setCodePanelHeight(clampedHeight);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    // Add/remove mouse event listeners
+    React.useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        } else {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, dragStartY, dragStartHeight]);
 
     const handleGenerate = async (prompt: string) => {
         setIsGenerating(true);
@@ -61,6 +118,13 @@ export default function AIBuilderPage() {
 
                         if (data.done && data.files) {
                             setGeneratedFiles(data.files);
+                            if (data.structure) {
+                                setProjectStructure(data.structure);
+                            }
+                            if (data.database) {
+                                setDatabaseSchema(data.database);
+                                // Keep code tab active, don't auto-switch
+                            }
                         }
                     }
                 }
@@ -223,35 +287,74 @@ export default function AIBuilderPage() {
 
             {/* Mode Toggle - Show when files exist */}
             {generatedFiles.length > 0 && !isFullscreen && (
-                <div className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 px-4 py-2 flex items-center gap-2">
-                    <span className="text-xs text-neutral-600 dark:text-neutral-400">Mode:</span>
-                    <Button
-                        variant={editorMode === 'visual' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setEditorMode('visual')}
-                    >
-                        Visual
-                    </Button>
-                    <Button
-                        variant={editorMode === 'code' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => {
-                            setEditorMode('code');
-                            setSelectedElement(null);
-                        }}
-                    >
-                        Code
-                    </Button>
+                <div className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400">Mode:</span>
+                        <Button
+                            variant={editorMode === 'visual' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEditorMode('visual')}
+                        >
+                            Visual
+                        </Button>
+                        <Button
+                            variant={editorMode === 'code' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                setEditorMode('code');
+                                setSelectedElement(null);
+                            }}
+                        >
+                            Code
+                        </Button>
+                    </div>
+                    {generatedFiles.length > 0 && showCodePanel && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant={activeTab === 'code' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setActiveTab('code')}
+                            >
+                                📄 Code
+                            </Button>
+                            <Button
+                                variant={activeTab === 'database' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setActiveTab('database')}
+                            >
+                                🗄️ Database
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Main Layout */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left: Prompt Input - Hide in fullscreen */}
+                {/* Left: Prompt Input - Collapsible */}
                 {!isFullscreen && (
-                    <div className="w-96">
-                        <PromptInput onSubmit={handleGenerate} isLoading={isGenerating} />
-                    </div>
+                    <>
+                        {showLeftPanel ? (
+                            <div className="w-96 relative">
+                                <PromptInput onSubmit={handleGenerate} isLoading={isGenerating} />
+                                <button
+                                    onClick={() => setShowLeftPanel(false)}
+                                    className="absolute top-2 right-2 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+                                    title="Hide panel"
+                                >
+                                    ◀
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowLeftPanel(true)}
+                                className="w-8 hover:bg-neutral-200 dark:hover:bg-neutral-800 flex items-center justify-center"
+                                title="Show prompt panel"
+                            >
+                                ▶
+                            </button>
+                        )}
+                    </>
                 )}
 
                 {/* Center: Preview and Code */}
@@ -289,47 +392,133 @@ export default function AIBuilderPage() {
                         </div>
                     )}
 
-                    <div className="flex-1 overflow-hidden">
-                        <PreviewPanel
-                            files={generatedFiles}
-                            isLoading={isGenerating}
-                            isFullscreen={isFullscreen}
-                            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-                            isSelectionMode={editorMode === 'visual'}
-                            onElementSelect={handleElementSelect}
-                        />
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        {!isPanelExpanded && (
+                            <div className="flex-1 overflow-hidden">
+                                <PreviewPanel
+                                    files={generatedFiles}
+                                    isLoading={isGenerating}
+                                    isFullscreen={isFullscreen}
+                                    onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                                    isSelectionMode={editorMode === 'visual'}
+                                    onElementSelect={handleElementSelect}
+                                />
+                            </div>
+                        )}
+                        {/* View Code Bar - Fixed at Bottom */}
+                        {generatedFiles.length > 0 && !isFullscreen && (
+                            <div className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 p-2 flex items-center justify-center gap-2">
+                                <Button
+                                    onClick={() => {
+                                        setShowCodePanel(!showCodePanel);
+                                        if (!showCodePanel) {
+                                            setActiveTab('code');
+                                        } else {
+                                            // Reset height when hiding
+                                            setCodePanelHeight(350);
+                                        }
+                                    }}
+                                    size="sm"
+                                    variant={showCodePanel ? 'default' : 'outline'}
+                                >
+                                    {showCodePanel ? '▼ Hide Code' : '▲ View Code'}
+                                </Button>
+                            </div>
+                        )}
                     </div>
-                    {!isFullscreen && (
-                        <CodeDisplay
-                            files={generatedFiles}
-                            onCodeChange={(fileIndex, newContent) => {
-                                const updatedFiles = [...generatedFiles];
-                                updatedFiles[fileIndex] = {
-                                    ...updatedFiles[fileIndex],
-                                    content: newContent,
-                                };
-                                setGeneratedFiles(updatedFiles);
-                            }}
-                        />
+                    {!isFullscreen && showCodePanel && activeTab === 'code' && (
+                        <div
+                            className="relative border-t border-neutral-200 dark:border-neutral-800"
+                            style={{ height: isPanelExpanded ? '100%' : `${codePanelHeight}px`, maxWidth: '100%', overflow: 'hidden' }}
+                        >
+                            {/* Resize Handle */}
+                            {!isPanelExpanded && (
+                                <div
+                                    onMouseDown={handleMouseDown}
+                                    className="absolute top-0 left-0 right-0 cursor-ns-resize hover:bg-purple-500 transition-colors z-[100] flex items-center justify-center"
+                                    style={{ height: '8px', marginTop: '-4px' }}
+                                >
+                                    <div className="w-12 h-1 bg-neutral-400 dark:bg-neutral-600 rounded-full shadow-sm" />
+                                </div>
+                            )}
+                            <div className="h-full">
+                                <CodeDisplay
+                                    files={generatedFiles}
+                                    structure={projectStructure}
+                                    onCodeChange={(fileIndex, newContent) => {
+                                        const updatedFiles = [...generatedFiles];
+                                        updatedFiles[fileIndex] = {
+                                            ...updatedFiles[fileIndex],
+                                            content: newContent,
+                                        };
+                                        setGeneratedFiles(updatedFiles);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {!isFullscreen && showCodePanel && activeTab === 'database' && (
+                        <div
+                            className="relative border-t border-neutral-200 dark:border-neutral-800"
+                            style={{ height: isPanelExpanded ? '100%' : `${codePanelHeight}px` }}
+                        >
+                            {/* Resize Handle */}
+                            {!isPanelExpanded && (
+                                <div
+                                    onMouseDown={handleMouseDown}
+                                    className="absolute top-0 left-0 right-0 cursor-ns-resize hover:bg-purple-500 transition-colors z-[100] flex items-center justify-center"
+                                    style={{ height: '8px', marginTop: '-4px' }}
+                                >
+                                    <div className="w-12 h-1 bg-neutral-400 dark:bg-neutral-600 rounded-full shadow-sm" />
+                                </div>
+                            )}
+                            <div className="h-full">
+                                <DatabaseViewer
+                                    schema={databaseSchema}
+                                    onExpandChange={setIsPanelExpanded}
+                                />
+                            </div>
+                        </div>
                     )}
                 </div>
 
-                {/* Right: Property Inspector (Visual) or Customization (Code) - Hide in fullscreen */}
+                {/* Right: Property Inspector (Visual) or Customization (Code) - Collapsible */}
                 {!isFullscreen && (
-                    editorMode === 'visual' ? (
-                        <PropertyInspector
-                            selectedElement={selectedElement}
-                            onPropertyChange={handlePropertyChange}
-                            onApplyChanges={handleApplyChanges}
-                            onClose={() => setSelectedElement(null)}
-                        />
-                    ) : (
-                        <CustomizationSidebar
-                            onCustomize={handleCustomize}
-                            isLoading={isCustomizing}
-                            hasCode={generatedFiles.length > 0}
-                        />
-                    )
+                    <>
+                        {showRightPanel ? (
+                            <div className="relative">
+                                {editorMode === 'visual' ? (
+                                    <PropertyInspector
+                                        selectedElement={selectedElement}
+                                        onPropertyChange={handlePropertyChange}
+                                        onApplyChanges={handleApplyChanges}
+                                        onClose={() => setSelectedElement(null)}
+                                    />
+                                ) : (
+                                    <CustomizationSidebar
+                                        onCustomize={handleCustomize}
+                                        isLoading={isCustomizing}
+                                        hasCode={generatedFiles.length > 0}
+                                    />
+                                )}
+                                <button
+                                    onClick={() => setShowRightPanel(false)}
+                                    className="absolute top-2 left-2 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded z-10"
+                                    title="Hide panel"
+                                >
+                                    ▶
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowRightPanel(true)}
+                                className="w-8 hover:bg-neutral-200 dark:hover:bg-neutral-800 flex items-center justify-center"
+                                title="Show customization panel"
+                            >
+                                ◀
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
         </div>

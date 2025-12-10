@@ -25,13 +25,14 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const elementSelectorRef = useRef<ElementSelector | null>(null);
     const skipNextReloadRef = useRef(false);
+    const lastContentRef = useRef<string>('');
 
     const refresh = () => setKey(prev => prev + 1);
 
     // Get HTML files for multi-page navigation
     const htmlFiles = files.filter(f => f.type === 'html');
-    const cssFile = files.find(f => f.type === 'css');
-    const jsFile = files.find(f => f.type === 'javascript');
+    const cssFile = files.find(f => f.type === 'css' || f.path.includes('.css'));
+    const jsFile = files.find(f => f.type === 'javascript' || f.path.includes('.js'));
 
     // Render iframe content
     useEffect(() => {
@@ -46,8 +47,16 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
                 let htmlContent = activeHtml.content;
 
                 // Remove external file references that cause 404 errors
-                htmlContent = htmlContent.replace(/<link[^>]*href=["']style\.css["'][^>]*>/gi, '');
-                htmlContent = htmlContent.replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, '');
+                htmlContent = htmlContent.replace(/<link[^>]*href=["'](?:css\/)?style\.css["'][^>]*>/gi, '');
+                htmlContent = htmlContent.replace(/<script[^>]*src=["'](?:js\/)?script\.js["'][^>]*><\/script>/gi, '');
+
+                // Ensure Tailwind CSS is loaded
+                if (!htmlContent.includes('cdn.tailwindcss.com')) {
+                    htmlContent = htmlContent.replace(
+                        '</head>',
+                        '  <script src="https://cdn.tailwindcss.com"></script>\n</head>'
+                    );
+                }
 
                 // If HTML doesn't have full structure, wrap it
                 if (!htmlContent.includes('<html')) {
@@ -63,6 +72,25 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
 </head>
 <body>
 ${htmlContent}
+<script>
+// API Proxy for iframe - enables database calls
+if (!window.__API_PROXY_INSTALLED__) {
+  window.__API_PROXY_INSTALLED__ = true;
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const [url, options] = args;
+    if (typeof url === 'string' && url.includes('/api/database')) {
+      try {
+        return window.parent.fetch(url, options);
+      } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+      }
+    }
+    return originalFetch.apply(this, args);
+  };
+}
+</script>
 ${jsFile ? `<script>${jsFile.content}</script>` : ''}
 </body>
 </html>`;
@@ -74,10 +102,39 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
                             `<style>${cssFile.content}</style>\n</head>`
                         );
                     }
+
+                    // Inject API proxy before user's JavaScript
+                    const apiProxyScript = `
+<script>
+// API Proxy for iframe - enables database calls
+if (!window.__API_PROXY_INSTALLED__) {
+  window.__API_PROXY_INSTALLED__ = true;
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const [url, options] = args;
+    if (typeof url === 'string' && url.includes('/api/database')) {
+      try {
+        return window.parent.fetch(url, options);
+      } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+      }
+    }
+    return originalFetch.apply(this, args);
+  };
+}
+</script>`;
+
                     if (jsFile && !htmlContent.includes(jsFile.content)) {
                         htmlContent = htmlContent.replace(
                             '</body>',
-                            `<script>${jsFile.content}</script>\n</body>`
+                            `${apiProxyScript}\n<script>${jsFile.content}</script>\n</body>`
+                        );
+                    } else {
+                        // Inject proxy even if no JS file
+                        htmlContent = htmlContent.replace(
+                            '</body>',
+                            `${apiProxyScript}\n</body>`
                         );
                     }
 
@@ -90,9 +147,13 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
                     }
                 }
 
-                iframeDoc.open();
-                iframeDoc.write(htmlContent);
-                iframeDoc.close();
+                // Only write if content changed to prevent "already declared" errors
+                if (htmlContent !== lastContentRef.current) {
+                    lastContentRef.current = htmlContent;
+                    iframeDoc.open();
+                    iframeDoc.write(htmlContent);
+                    iframeDoc.close();
+                }
             }
         }
     }, [files, key, activeHtmlIndex, htmlFiles, cssFile, jsFile]);

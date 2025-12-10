@@ -30,10 +30,10 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
     const stats = prompt ? getOptimizationStats(prompt, optimizedPrompt) : null;
 
     const examplePrompts = [
-        'Create a modern landing page for a SaaS product with hero, features, and pricing sections',
-        'Build a dashboard with sidebar navigation, stats cards, and a data table',
-        'Design a contact page with a form, map, and company information',
-        'Make a portfolio page showcasing projects with images and descriptions',
+        'Build a task manager app with user authentication and SQLite database',
+        'Create a blog platform with posts, comments, and user profiles',
+        'Make an e-commerce product catalog with shopping cart and checkout',
+        'Design a real-time chat application with message history',
     ];
 
     return (
@@ -45,7 +45,7 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
                     AI Page Builder
                 </h2>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                    Describe the page you want to create
+                    Build full-stack apps with backend & database
                 </p>
             </div>
 
@@ -57,7 +57,7 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="e.g., Create a modern landing page for a coffee shop with hero section, menu, and contact form..."
+                        placeholder="e.g., Build a todo app with user login, task CRUD operations, and SQLite database..."
                         className="flex-1 p-3 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
                         disabled={isLoading}
                     />

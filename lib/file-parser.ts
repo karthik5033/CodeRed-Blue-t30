@@ -1,8 +1,9 @@
 /**
- * Utility for parsing AI-generated multi-file responses
+ * Enhanced file parser for full-stack applications
  */
 
-import { FileData, PageDetection } from '@/types/ai-builder';
+import { FileData, PageDetection, ProjectStructure, DatabaseSchema } from '@/types/ai-builder';
+import { createProjectStructure, detectProjectType } from './project-organizer';
 
 /**
  * Detects page types from user prompt
@@ -41,145 +42,198 @@ export function detectPages(prompt: string): PageDetection {
 }
 
 /**
- * Extracts multiple code blocks from AI response
+ * Map language to file type
+ */
+function mapLanguageToType(language: string): FileData['type'] {
+    const langMap: Record<string, FileData['type']> = {
+        html: 'html',
+        css: 'css',
+        javascript: 'javascript',
+        js: 'javascript',
+        typescript: 'typescript',
+        ts: 'typescript',
+        jsx: 'jsx',
+        tsx: 'tsx',
+        json: 'json',
+        env: 'env',
+        markdown: 'markdown',
+        md: 'markdown',
+        prisma: 'text',
+        txt: 'text',
+    };
+    return langMap[language.toLowerCase()] || 'text';
+}
+
+/**
+ * Determine file category from path
+ */
+function determineCategory(path: string, type: FileData['type']): FileData['category'] {
+    const lowerPath = path.toLowerCase();
+
+    if (lowerPath.includes('backend/') || lowerPath.includes('server/') || lowerPath.includes('api/')) {
+        return 'backend';
+    }
+
+    if (lowerPath.includes('models/') || lowerPath.includes('schema') || lowerPath.includes('prisma/')) {
+        return 'database';
+    }
+
+    if (type === 'json' || type === 'env' || lowerPath.includes('config') || lowerPath.includes('.env')) {
+        return 'config';
+    }
+
+    if (type === 'markdown' || lowerPath.includes('readme')) {
+        return 'docs';
+    }
+
+    return 'frontend';
+}
+
+/**
+ * Extract files from AI response with full-stack support
  */
 export function extractFilesFromResponse(response: string): FileData[] {
     const files: FileData[] = [];
 
-    // Match code blocks with optional file names
-    // Patterns: ```html:filename.html or ```html or ```css:style.css
+    // Match code blocks with file paths: ```language:path/to/file.ext
     const codeBlockRegex = /```(\w+)(?::([^\n]+))?\n([\s\S]*?)```/g;
 
     let match;
-    const foundBlocks: Array<{ type: string; name?: string; content: string }> = [];
-
     while ((match = codeBlockRegex.exec(response)) !== null) {
-        const [, language, filename, content] = match;
-        foundBlocks.push({
-            type: language.toLowerCase(),
-            name: filename?.trim(),
+        const [, language, filepath, content] = match;
+
+        const type = mapLanguageToType(language);
+        const path = filepath?.trim() || generateDefaultPath(language, files.length);
+        const name = path.split('/').pop() || 'file';
+        const category = determineCategory(path, type);
+
+        files.push({
+            name,
             content: content.trim(),
+            type,
+            category,
+            path,
+            size: content.trim().length,
         });
     }
 
     // If no code blocks found, try to extract raw HTML
-    if (foundBlocks.length === 0) {
+    if (files.length === 0) {
         const htmlMatch = response.match(/<[^>]+>/);
         if (htmlMatch) {
-            foundBlocks.push({
-                type: 'html',
+            files.push({
+                name: 'index.html',
                 content: response.trim(),
+                type: 'html',
+                category: 'frontend',
+                path: 'index.html',
+                size: response.trim().length,
             });
         }
-    }
-
-    // Organize blocks into files
-    const htmlBlocks = foundBlocks.filter(b => b.type === 'html');
-    const cssBlocks = foundBlocks.filter(b => b.type === 'css');
-    const jsBlocks = foundBlocks.filter(b => b.type === 'javascript' || b.type === 'js');
-
-    // Process HTML files
-    htmlBlocks.forEach((block, index) => {
-        const name = block.name || (htmlBlocks.length > 1 ? `page${index + 1}.html` : 'index.html');
-        files.push({
-            name,
-            content: block.content,
-            type: 'html',
-            size: block.content.length,
-        });
-    });
-
-    // Process CSS files
-    if (cssBlocks.length > 0) {
-        const combinedCSS = cssBlocks.map(b => b.content).join('\n\n');
-        files.push({
-            name: 'style.css',
-            content: combinedCSS,
-            type: 'css',
-            size: combinedCSS.length,
-        });
-    }
-
-    // Process JS files
-    if (jsBlocks.length > 0) {
-        const combinedJS = jsBlocks.map(b => b.content).join('\n\n');
-        files.push({
-            name: 'script.js',
-            content: combinedJS,
-            type: 'javascript',
-            size: combinedJS.length,
-        });
-    }
-
-    // If only one HTML file and no explicit files, create default structure
-    if (files.length === 1 && files[0].type === 'html') {
-        // Extract inline styles and scripts
-        const html = files[0].content;
-
-        // Extract <style> tags
-        const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
-        const styles: string[] = [];
-        let styleMatch;
-        while ((styleMatch = styleRegex.exec(html)) !== null) {
-            styles.push(styleMatch[1].trim());
-        }
-
-        // Extract <script> tags (excluding CDN scripts)
-        const scriptRegex = /<script(?![^>]*src=["']https?:\/\/)[^>]*>([\s\S]*?)<\/script>/gi;
-        const scripts: string[] = [];
-        let scriptMatch;
-        while ((scriptMatch = scriptRegex.exec(html)) !== null) {
-            if (scriptMatch[1].trim()) {
-                scripts.push(scriptMatch[1].trim());
-            }
-        }
-
-        // Remove inline styles and scripts from HTML
-        let cleanHTML = html
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .replace(/<script(?![^>]*src=["']https?:\/\/)[^>]*>[\s\S]*?<\/script>/gi, '');
-
-        // Add links to external files if we extracted content
-        if (styles.length > 0) {
-            cleanHTML = cleanHTML.replace(
-                '</head>',
-                '  <link rel="stylesheet" href="style.css">\n</head>'
-            );
-
-            files.push({
-                name: 'style.css',
-                content: styles.join('\n\n'),
-                type: 'css',
-                size: styles.join('\n\n').length,
-            });
-        }
-
-        if (scripts.length > 0) {
-            cleanHTML = cleanHTML.replace(
-                '</body>',
-                '  <script src="script.js"></script>\n</body>'
-            );
-
-            files.push({
-                name: 'script.js',
-                content: scripts.join('\n\n'),
-                type: 'javascript',
-                size: scripts.join('\n\n').length,
-            });
-        }
-
-        // Update the HTML file
-        files[0].content = cleanHTML;
-        files[0].size = cleanHTML.length;
     }
 
     return files;
 }
 
 /**
- * Validates that HTML files properly reference CSS and JS files
+ * Generate default path for files without explicit paths
  */
-export function validateFileLinks(files: FileData[]): FileData[] {
+function generateDefaultPath(language: string, index: number): string {
+    const defaults: Record<string, string> = {
+        html: 'index.html',
+        css: 'style.css',
+        javascript: 'script.js',
+        js: 'script.js',
+        typescript: 'index.ts',
+        tsx: 'App.tsx',
+        jsx: 'App.jsx',
+        json: 'package.json',
+    };
+
+    return defaults[language.toLowerCase()] || `file${index}.txt`;
+}
+
+/**
+ * Extract database schema from files
+ */
+export function extractDatabaseSchema(files: FileData[]): DatabaseSchema | undefined {
+    // Check for /api/database usage in JavaScript files
+    const jsFiles = files.filter(f =>
+        (f.type === 'javascript' || f.path.includes('.js')) &&
+        f.content.includes('/api/database')
+    );
+
+    console.log('[Database Detection] JS files with /api/database:', jsFiles.length);
+
+    if (jsFiles.length > 0) {
+        // Extract table names from JavaScript code
+        const tableNames: string[] = [];
+        jsFiles.forEach(file => {
+            console.log('[Database Detection] Checking file:', file.path);
+            // Look for table: 'tablename' or table: "tablename"
+            const tableMatches = file.content.match(/table:\s*['"](\w+)['"]/g);
+            console.log('[Database Detection] Table matches:', tableMatches);
+            if (tableMatches) {
+                tableMatches.forEach(match => {
+                    const tableName = match.match(/['"](\ w+)['"]/)?.[1];
+                    if (tableName && !tableNames.includes(tableName)) {
+                        tableNames.push(tableName);
+                    }
+                });
+            }
+        });
+
+        console.log('[Database Detection] Found tables:', tableNames);
+
+        if (tableNames.length > 0) {
+            return {
+                name: 'database',
+                type: 'mongodb', // Using JSON storage, but show as MongoDB for UI
+                collections: tableNames.map(name => ({
+                    name,
+                    schema: {},
+                    indexes: [],
+                })),
+            };
+        }
+    }
+
+    // Check for MongoDB/Mongoose
+    const mongooseFiles = files.filter(f =>
+        f.content.includes('mongoose') ||
+        f.path.includes('models/') && f.content.includes('Schema')
+    );
+
+    if (mongooseFiles.length > 0) {
+        return {
+            name: 'database',
+            type: 'mongodb',
+            collections: mongooseFiles.map(f => ({
+                name: f.name.replace(/\.(js|ts)$/, ''),
+                schema: {},
+                indexes: [],
+            })),
+        };
+    }
+
+    // Check for Prisma
+    const prismaFile = files.find(f => f.path.includes('schema.prisma'));
+    if (prismaFile) {
+        return {
+            name: 'database',
+            type: 'postgresql',
+            tables: [],
+        };
+    }
+
+    console.log('[Database Detection] No database detected');
+    return undefined;
+}
+
+/**
+ * Validate and enhance HTML files
+ */
+function validateHTMLFiles(files: FileData[]): FileData[] {
     const htmlFiles = files.filter(f => f.type === 'html');
     const hasCSSFile = files.some(f => f.type === 'css');
     const hasJSFile = files.some(f => f.type === 'javascript');
@@ -241,7 +295,24 @@ ${hasJSFile ? '  <script src="script.js"></script>\n' : ''}</body>
 /**
  * Main function to parse AI response into structured files
  */
-export function parseAIResponse(response: string): FileData[] {
-    const files = extractFilesFromResponse(response);
-    return validateFileLinks(files);
+export function parseAIResponse(response: string): {
+    files: FileData[];
+    structure: ProjectStructure;
+    database?: DatabaseSchema;
+} {
+    let files = extractFilesFromResponse(response);
+
+    // Validate HTML files only if they exist
+    if (files.some(f => f.type === 'html')) {
+        files = validateHTMLFiles(files);
+    }
+
+    const structure = createProjectStructure(files);
+    const database = extractDatabaseSchema(files);
+
+    return {
+        files,
+        structure,
+        database,
+    };
 }
