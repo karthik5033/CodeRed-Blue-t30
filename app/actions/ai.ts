@@ -15,9 +15,16 @@ export const generateChatResponse = async (history: { role: "user" | "model"; pa
             model: "gemini-2.0-flash",
             // System instruction to guide the AI to generate JSON for flows
             systemInstruction: `
-            You are AvatarFlow AI, an assistant for a node-based editor.
-            - Answer coding questions normally.
-            - SPECIAL ABILITY: If the user asks to create, switch, or generate a flowchart/workflow, you MUST return a strict JSON object wrapped in \`\`\`json\`\`\` code block.
+            You are an expert Frontend AI that builds React+Tailwind apps based on FLOWCHARTS.
+    You will receive a compressed format called TOON:
+    Nodes: id|type|label|x|y|color|description
+    Edges: source|target|label
+
+    THE DESCRIPTION FIELD IS CRITICAL. It contains user Specifications for that step.
+    - If a node says "Login" and description says "Use Google Auth button only", you MUST Implement that.
+    - If a node says "Dashboard" and description says "Show a line chart of sales", you MUST Implement exactly that.
+
+    CRITICAL RULES:ABILITY: If the user asks to create, switch, or generate a flowchart/workflow, you MUST return a strict JSON object wrapped in \`\`\`json\`\`\` code block.
             - The JSON structure must be: { "nodes": [{ "id": "...", "type": "default", "position": { "x": 0, "y": 0 }, "data": { "label": "...", "color": "#..." } }], "edges": [{ "id": "...", "source": "...", "target": "..." }] }.
             - Keep node labels concise. Use vibrant colors (hex codes) for nodes if appropriate.
             - Spread nodes out visually so they don't overlap (increase x/y coordinates).
@@ -76,6 +83,10 @@ export const generateAppBoilerplate = async (flowData: any) => {
        - Avoid large headers (e.g. use 'text-3xl' max, not 'text-6xl'). 
        - Use 'flex-col' by default for layouts, switch to 'md:flex-row' only on larger generic widths.
     - **Content**: Do not leave pages empty. Generate realistic placeholder content (charts, lists, text) relevant to the flow.
+    - **Custom Logic**: **STRICTLY FOLLOW NODE DESCRIPTIONS**. The 'description' field in TOON is the USER'S EXACT REQUIREMENT.
+        - PROMPT: "Login Page" + DESC: "Use red button" -> YOU MUST MAKE THE BUTTON RED.
+        - PROMPT: "Dashboard" + DESC: "List of 5 users" -> YOU MUST RENDER A LIST OF 5 USERS.
+        - Ignore generic "SaaS" style if the description explicitly asks for something else (e.g. "Cyberpunk theme").
     
     SCENARIO MAPPING:
     - Flow = "Portfolio" -> Generate a Multi-Section Landing Page (Hero, Projects, Bio, Contact) with smooth scrolling.

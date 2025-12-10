@@ -2,7 +2,7 @@ import { Node, Edge } from "reactflow";
 
 // TOON Format:
 // NODES:
-// id|type|label|x|y|color
+// id|type|label|x|y|color|description
 //
 // EDGES:
 // source|target|label
@@ -15,7 +15,8 @@ export function toTOON(nodes: Node[], edges: Edge[]): string {
         const y = Math.round(n.position.y);
         const color = n.data.color || "#ffffff";
         const label = n.data.label || "";
-        return `${n.id}|${n.type}|${label}|${x}|${y}|${color}`;
+        const description = n.data.description || "";
+        return `${n.id}|${n.type}|${label}|${x}|${y}|${color}|${description}`;
     }).join("\n");
 
     const edgesStr = edges.map(e => {
@@ -31,12 +32,12 @@ export function fromTOON(toonStr: string): { nodes: any[], edges: any[] } | null
         if (!nodePart) return null;
 
         const nodes = nodePart.replace("NODES:\n", "").trim().split("\n").map(line => {
-            const [id, type, label, x, y, color] = line.split("|");
+            const [id, type, label, x, y, color, description] = line.split("|");
             return {
                 id,
                 type,
                 position: { x: parseInt(x), y: parseInt(y) },
-                data: { label, color },
+                data: { label, color, description: description || "" },
                 style: { backgroundColor: color } // standard style mapping
             };
         });

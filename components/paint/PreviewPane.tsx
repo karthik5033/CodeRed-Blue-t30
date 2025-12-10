@@ -111,6 +111,7 @@ export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
                   style={{ flex: 1, height: "100%", width: "100%", minHeight: 0 }}
                   showOpenInCodeSandbox={false}
                   showRefreshButton={true}
+                  showNavigator={true}
                 />
                 {showConsole && (
                   <div className="h-32 border-t border-gray-200 bg-white transition-all shrink-0">
