@@ -8,9 +8,10 @@ import { generateChatResponse } from "../../app/actions/ai";
 
 interface AIChatPanelProps {
     onApplyFlow?: (nodes: Node[], edges: Edge[]) => void;
+    forceMessage?: string | null;
 }
 
-export default function AIChatPanel({ onApplyFlow }: AIChatPanelProps) {
+export default function AIChatPanel({ onApplyFlow, forceMessage }: AIChatPanelProps) {
     const [messages, setMessages] = useState<{ role: "user" | "ai" | "model"; text: string }[]>([
         { role: "ai", text: "Hi! I'm your AvatarFlow Agent. I can help you build workflows, generate boilerplate, or explain concepts. What are we building today?" }
     ]);
@@ -25,6 +26,13 @@ export default function AIChatPanel({ onApplyFlow }: AIChatPanelProps) {
     useEffect(() => {
         scrollToBottom();
     }, [messages, isTyping]);
+
+    // Handle external messages (e.g. from Sidebar clicks)
+    useEffect(() => {
+        if (forceMessage) {
+            handleSend(forceMessage);
+        }
+    }, [forceMessage]);
 
     const handleSend = async (text = input) => {
         if (!text.trim()) return;

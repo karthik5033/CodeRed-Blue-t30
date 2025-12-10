@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
-import { SandpackProvider, SandpackPreview, SandpackConsole, SandpackLayout } from "@codesandbox/sandpack-react";
+import React, { useEffect, useState } from "react";
+import { SandpackProvider, SandpackPreview, SandpackConsole, SandpackLayout, SandpackCodeEditor } from "@codesandbox/sandpack-react";
+import { Moon, Sun, Type, Palette, RefreshCw, Zap } from "lucide-react";
 
 interface PreviewPaneProps {
   code?: string;
   isGenerating?: boolean;
+  tokenStats?: { jsonSize: number; toonSize: number; savedPercent: number } | null;
 }
 
 const DEFAULT_CODE = `export default function App() {
@@ -22,27 +24,79 @@ const DEFAULT_CODE = `export default function App() {
   );
 }`;
 
-export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
+type ThemeColor = 'blue' | 'indigo' | 'violet' | 'purple' | 'fuchsia' | 'pink' | 'rose' | 'red' | 'orange' | 'amber' | 'yellow' | 'lime' | 'green' | 'emerald' | 'teal' | 'cyan' | 'sky';
+
+export default function PreviewPane({ code, isGenerating, tokenStats }: PreviewPaneProps) {
   const [showCode, setShowCode] = React.useState(false);
   const [showConsole, setShowConsole] = React.useState(false);
+  const [activeCode, setActiveCode] = useState(code || DEFAULT_CODE);
+  const [isDark, setIsDark] = useState(false);
+
+  // Sync prop changes to state
+  useEffect(() => {
+    if (code) setActiveCode(code);
+  }, [code]);
+
+  const handleColorChange = (newColor: ThemeColor) => {
+    // Regex to replace color-500, color-600 etc. with new color
+    // This matches common Tailwind usage like 'bg-blue-500', 'text-indigo-600'
+    const updated = activeCode.replace(/(text|bg|border|from|to|via)-(blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|gray|slate|zinc|neutral|stone)-/g, `$1-${newColor}-`);
+    setActiveCode(updated);
+  };
+
+  const toggleDarkMode = () => {
+    // Simple toggle for preview container - app needs to support dark mode classes or we just wrap it
+    // For now, let's just toggle a wrapper class if possible, or inject 'dark'
+    setIsDark(!isDark);
+  };
 
   return (
-    <div className="h-full w-full flex flex-col">
-      <div className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-xs text-gray-500 flex justify-between items-center">
+    <div className="h-full w-full flex flex-col relative">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-3 py-2 text-xs text-gray-500 flex justify-between items-center shrink-0 z-10">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-gray-700">Live Preview</span>
-          <span className="px-1.5 py-0.5 bg-gray-200 rounded text-[10px]">React + Tailwind</span>
+          {tokenStats ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
+              <Zap className="w-3 h-3 fill-emerald-500 text-emerald-600" />
+              <span className="font-medium text-[10px]">TOON: {tokenStats.savedPercent}% saved</span>
+            </div>
+          ) : (
+            <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-500">React + Tailwind</span>
+          )}
+          {isGenerating && (
+            <div className="flex items-center gap-1 text-indigo-600">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Generating...</span>
+            </div>
+          )}
         </div>
+
         <div className="flex items-center gap-3">
+          {/* Simple Color Picker */}
+          <div className="flex gap-1 mr-2">
+            {(['blue', 'emerald', 'rose', 'amber'] as const).map(c => (
+              <button
+                key={c}
+                onClick={() => handleColorChange(c)}
+                className={`w-3 h-3 rounded-full hover:scale-125 transition-transform ring-1 ring-gray-200 ${c === 'blue' ? 'bg-blue-500' :
+                  c === 'emerald' ? 'bg-emerald-500' :
+                    c === 'rose' ? 'bg-rose-500' : 'bg-amber-500'
+                  }`}
+                title={`Switch to ${c}`}
+              />
+            ))}
+          </div>
+
           <button
             onClick={() => setShowConsole(!showConsole)}
-            className={`font-medium underline decoration-dotted transition-colors ${showConsole ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+            className={`font-medium transition-colors ${showConsole ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
           >
             {showConsole ? "Hide Console" : "Console"}
           </button>
           <button
             onClick={() => setShowCode(!showCode)}
-            className={`font-medium underline decoration-dotted transition-colors ${showCode ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+            className={`font-medium transition-colors ${showCode ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
           >
             {showCode ? "Hide Code" : "Code"}
           </button>
@@ -50,80 +104,81 @@ export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
       </div>
 
       <div className="flex-1 relative overflow-hidden bg-slate-50">
-        {/* Loading Overlay */}
-        {isGenerating && (
-          <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-            <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-sm font-medium text-slate-700">Generating App...</p>
-          </div>
-        )}
+        <SandpackProvider
+          key={code} // Reset when new generation comes in, but allow local edits otherwise
+          template="react-ts"
+          theme="light"
+          files={{
+            "/App.tsx": { code: activeCode, active: true },
+          }}
+          customSetup={{
+            dependencies: {
+              "react": "18.2.0",
+              "react-dom": "18.2.0",
+              "lucide-react": "latest",
+              "clsx": "latest",
+              "tailwind-merge": "latest",
+              "react-xarrows": "2.0.2",
+              "react-use-gesture": "9.1.3",
+              "framer-motion": "10.16.4",
+              "react-router-dom": "6.22.3"
+            }
+          }}
+          options={{
+            externalResources: ["https://cdn.tailwindcss.com"],
+            classes: {
+              "sp-wrapper": "h-full w-full",
+              "sp-layout": "h-full w-full",
+            }
+          }}
+          style={{ height: '100%', width: '100%' }}
+        >
+          <SandpackLayout style={{ height: "100%", width: "100%", flexDirection: "column", display: "flex", borderRadius: 0 }}>
+            {/* Main Preview Area */}
+            <div className="flex-1 relative min-h-0 w-full">
+              <SandpackPreview
+                style={{ height: "100%", width: "100%" }}
+                showOpenInCodeSandbox={false}
+                showRefreshButton={false} // We have our own status
+                showNavigator={true}
+              />
 
-        {/* Code Overlay - now with max height to not block everything if user wants to peek */}
-        {showCode ? (
-          <div className="absolute top-0 left-0 right-0 h-1/2 bg-slate-900 text-slate-50 p-4 overflow-auto text-xs font-mono z-20 shadow-xl border-b border-slate-700">
-            <div className="absolute top-2 right-2 text-slate-400 text-[10px]">read-only</div>
-            <pre>{code || DEFAULT_CODE}</pre>
-          </div>
-        ) : null}
+              {/* Loading Overlay */}
+              {isGenerating && (
+                <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <p className="text-sm font-medium text-slate-700">Generating App...</p>
+                </div>
+              )}
 
-        {!code ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
-            <div className="w-16 h-16 mb-4 rounded-xl bg-slate-100 flex items-center justify-center">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            </div>
-            <p className="text-sm font-medium text-slate-600">No App Generated Yet</p>
-            <p className="text-xs mt-1">Build a flow and click "Generate App"</p>
-          </div>
-        ) : (
-
-          <div className="h-full w-full">
-            <SandpackProvider
-              key={code}
-              template="react-ts"
-              theme="light"
-              files={{
-                "/App.tsx": code,
-              }}
-              customSetup={{
-                dependencies: {
-                  "react": "18.2.0",
-                  "react-dom": "18.2.0",
-                  "lucide-react": "latest",
-                  "clsx": "latest",
-                  "tailwind-merge": "latest",
-                  "react-xarrows": "2.0.2",
-                  "react-use-gesture": "9.1.3",
-                  "framer-motion": "10.16.4",
-                  "react-router-dom": "6.22.3"
-                }
-              }}
-              options={{
-                externalResources: ["https://cdn.tailwindcss.com"],
-                classes: {
-                  "sp-wrapper": "h-full w-full",
-                  "sp-layout": "h-full w-full",
-                }
-              }}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <SandpackLayout style={{ height: "100%", width: "100%", flexDirection: "column", display: "flex", borderRadius: 0 }}>
-                <SandpackPreview
-                  style={{ flex: 1, height: "100%", width: "100%", minHeight: 0 }}
-                  showOpenInCodeSandbox={false}
-                  showRefreshButton={true}
-                  showNavigator={true}
-                />
-                {showConsole && (
-                  <div className="h-32 border-t border-gray-200 bg-white transition-all shrink-0">
-                    <SandpackConsole style={{ height: "100%" }} />
+              {/* Code Editor Overlay */}
+              {showCode && (
+                <div className="absolute inset-0 z-20 bg-white border-l border-gray-200 flex flex-col animate-in slide-in-from-bottom-10 duration-200">
+                  <div className="p-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <span className="text-xs font-mono text-gray-500">App.tsx</span>
+                    <div className="text-[10px] text-gray-400">Edits update live</div>
                   </div>
-                )}
-              </SandpackLayout>
-            </SandpackProvider>
-          </div>
-        )
-        }
-      </div >
-    </div >
+                  <div className="flex-1 overflow-auto">
+                    <SandpackCodeEditor
+                      showTabs={false}
+                      showLineNumbers={true}
+                      showInlineErrors={true}
+                      wrapContent={true}
+                      style={{ height: "100%" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {showConsole && (
+              <div className="h-32 border-t border-gray-200 bg-white transition-all shrink-0">
+                <SandpackConsole style={{ height: "100%" }} />
+              </div>
+            )}
+          </SandpackLayout>
+        </SandpackProvider>
+      </div>
+    </div>
   );
 }

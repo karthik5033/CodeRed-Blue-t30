@@ -45,6 +45,8 @@ export default function EditorShell() {
     /* 🔹 UI State */
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedCode, setGeneratedCode] = useState<string | undefined>(undefined);
+    const [pendingChatMsg, setPendingChatMsg] = useState<string | null>(null);
+    const [tokenStats, setTokenStats] = useState<{ jsonSize: number; toonSize: number; savedPercent: number } | null>(null);
 
     /* 🔹 ReactFlow State */
     const [nodes, setNodes] = useState<Node[]>([
@@ -211,6 +213,14 @@ export default function EditorShell() {
 
                                 // TOON Logic: Convert flow to optimized string
                                 const toonData = toTOON(nodes, edges);
+
+                                // Calculate Savings
+                                const jsonSize = JSON.stringify({ nodes, edges }).length;
+                                const toonSize = toonData.length;
+                                const savedPercent = Math.round((1 - toonSize / jsonSize) * 100);
+                                setTokenStats({ jsonSize, toonSize, savedPercent });
+
+                                console.log(`TOON Optimization: ${jsonSize} -> ${toonSize} bytes (${savedPercent}% saved)`);
                                 console.log("Sending TOON Data:", toonData);
 
                                 const code = await generateAppBoilerplate(toonData);
@@ -262,15 +272,46 @@ export default function EditorShell() {
                                     <p className="text-xs text-slate-500">Select components to build your app logic.</p>
                                 </div>
 
+                                {/* Common Chats / Templates */}
+                                <div className="mb-6 space-y-2">
+                                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Common Workflows</h3>
+                                    {[
+                                        { label: "Portfolio Website", prompt: "Create a modern Portfolio website with a Hero section, About Me, Project Gallery (grid), and Contact Form." },
+                                        { label: "SaaS Dashboard", prompt: "Build a comprehensive SaaS Dashboard with a sidebar, top metrics cards, revenue chart, and recent activity table." },
+                                        { label: "E-commerce Store", prompt: "Generate an E-commerce flow: Product Listing Page with filters -> Product Details -> Shopping Cart -> Checkout." },
+                                        { label: "Social Media Feed", prompt: "Design a social media feed with a 'Post Input' area, infinite scroll stream of posts (avatar + content), and a right sidebar for trends." },
+                                        { label: "Task Manager (Kanban)", prompt: "Create a Kanban-style Task Manager with columns for 'To Do', 'In Progress', and 'Done', including drag-and-drop visuals." },
+                                        { label: "Login & Auth Flow", prompt: "Build a secure Authentication flow: Login Screen with social buttons -> Forgot Password -> Two-Factor Verification." },
+                                        { label: "AI Chat Interface", prompt: "Design a ChatGPT-style AI interface with a left sidebar for history and a main chat area with input box and message bubbles." },
+                                        { label: "Landing Page (Startup)", prompt: "Create a high-conversion Startup Landing Page with: Sticky Navbar, Value Prop Hero, Feature Grid, Testimonials, and Pricing Table." }
+                                    ].map((item, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => {
+                                                setPendingChatMsg(item.prompt);
+                                                // Clear it shortly after so it can be triggered again if needed
+                                                setTimeout(() => setPendingChatMsg(null), 500);
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all flex items-center justify-between group"
+                                        >
+                                            {item.label}
+                                            <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-indigo-400" />
+                                        </button>
+                                    ))}
+                                </div>
+
                                 {/* Tip */}
-                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-500 leading-relaxed">
-                                    Tip: double-click a node to edit its label. Add outputs inside the node to create multiple connection ports.
+                                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100 text-xs text-yellow-700 leading-relaxed">
+                                    <strong>Tip:</strong> Double-click nodes to add specifications like "Use red buttons" or "Dark mode".
                                 </div>
                             </div>
 
                             {/* AI Chat Layout Adjustment */}
                             <div className="border-t border-gray-100 h-[350px]">
-                                <AIChatPanel onApplyFlow={(newNodes, newEdges) => { setNodes(newNodes); setEdges(newEdges); }} />
+                                <AIChatPanel
+                                    onApplyFlow={(newNodes, newEdges) => { setNodes(newNodes); setEdges(newEdges); }}
+                                    forceMessage={pendingChatMsg}
+                                />
                             </div>
                         </Panel>
 
@@ -329,7 +370,7 @@ export default function EditorShell() {
 
                             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full w-full">
                                 <div className="flex-1 overflow-hidden relative h-full w-full">
-                                    <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} />
+                                    <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} tokenStats={tokenStats} />
                                 </div>
                             </div>
                         </Panel>
