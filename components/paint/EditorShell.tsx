@@ -10,6 +10,10 @@ import PreviewPane from "./PreviewPane";
 import SuggestionMenu from "./SuggestionMenu";
 import AIChatPanel from "./AIChatPanel";
 
+import { toTOON } from "../../utils/toon";
+import { generateAppBoilerplate } from "../../app/actions/ai";
+import { PanelResizeHandle, Panel, PanelGroup } from "react-resizable-panels";
+
 /* ------------------ PALETTE COMPONENTS ------------------ */
 function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -37,10 +41,11 @@ function PaletteItem({ label, icon, onClick }: { label: string; icon: any; onCli
     );
 }
 
-import { PanelResizeHandle, Panel, PanelGroup } from "react-resizable-panels";
-
-/* --------------------------- MAIN SHELL --------------------------- */
 export default function EditorShell() {
+    /* 🔹 UI State */
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedCode, setGeneratedCode] = useState<string | undefined>(undefined);
+
     /* 🔹 ReactFlow State */
     const [nodes, setNodes] = useState<Node[]>([
         {
@@ -105,6 +110,11 @@ export default function EditorShell() {
     const [modalOpen, setModalOpen] = useState(false);
     const [suggestionPos, setSuggestionPos] = useState<{ x: number; y: number } | null>(null);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     /* 🔹 Handlers */
     const handleAddNode = (label: string) => {
@@ -147,6 +157,15 @@ export default function EditorShell() {
     };
 
     const handleActionSelect = (actionLabel: string) => {
+        // Handle "Delete Node" specially
+        if (actionLabel === "Delete Node" && selectedNodeId) {
+            setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
+            setEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
+            setSelectedNodeId(null); // Clear selection
+            setSuggestionPos(null);
+            return;
+        }
+
         const newNode = handleAddNode(actionLabel);
         if (selectedNodeId) {
             const parentNode = nodes.find(n => n.id === selectedNodeId);
@@ -185,100 +204,133 @@ export default function EditorShell() {
                     <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                         Export
                     </button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2">
-                        Generate App
+                    <button
+                        onClick={async () => {
+                            try {
+                                setIsGenerating(true);
+
+                                // TOON Logic: Convert flow to optimized string
+                                const toonData = toTOON(nodes, edges);
+                                console.log("Sending TOON Data:", toonData);
+
+                                const code = await generateAppBoilerplate(toonData);
+                                setGeneratedCode(code);
+                                setIsGenerating(false);
+                            } catch (e) {
+                                setIsGenerating(false);
+                                alert("Failed to generate app.");
+                            }
+                        }}
+                        disabled={isGenerating}
+                        className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                <span>Generating...</span>
+                            </>
+                        ) : (
+                            <>Generate App</>
+                        )}
                     </button>
                 </div>
             </header>
 
             {/* ---------------- MAIN CONTENT ---------------- */}
             <div className="flex-1 overflow-hidden">
-                <PanelGroup direction="horizontal">
-                    {/* ---------------- LEFT SIDEBAR ---------------- */}
-                    <Panel defaultSize={20} minSize={15} maxSize={30} className="flex flex-col bg-white">
-                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                {!mounted ? (
+                    <div className="flex items-center justify-center h-full bg-slate-50">
+                        <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                    </div>
+                ) : (
+                    <PanelGroup direction="horizontal">
+                        {/* ---------------- LEFT SIDEBAR ---------------- */}
+                        <Panel defaultSize={20} minSize={15} maxSize={30} className="flex flex-col bg-white">
+                            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
-                            {/* Flow Builder Intro */}
-                            <div className="mb-6">
-                                <h2 className="text-sm font-bold text-slate-900 mb-1">Workflow Builder</h2>
-                                <p className="text-xs text-slate-500">Select components to build your app logic.</p>
+                                {/* Flow Builder Intro */}
+                                <div className="mb-6">
+                                    <h2 className="text-sm font-bold text-slate-900 mb-1">Workflow Builder</h2>
+                                    <p className="text-xs text-slate-500">Select components to build your app logic.</p>
+                                </div>
+
+                                {/* Tip */}
+                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-500 leading-relaxed">
+                                    Tip: double-click a node to edit its label. Add outputs inside the node to create multiple connection ports.
+                                </div>
                             </div>
 
-                            {/* Tip */}
-                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-500 leading-relaxed">
-                                Tip: double-click a node to edit its label. Add outputs inside the node to create multiple connection ports.
+                            {/* AI Chat Layout Adjustment */}
+                            <div className="border-t border-gray-100 h-[350px]">
+                                <AIChatPanel onApplyFlow={(newNodes, newEdges) => { setNodes(newNodes); setEdges(newEdges); }} />
                             </div>
-                        </div>
+                        </Panel>
 
-                        {/* AI Chat Layout Adjustment */}
-                        <div className="border-t border-gray-100 h-[350px]">
-                            <AIChatPanel />
-                        </div>
-                    </Panel>
+                        <PanelResizeHandle className="bg-transparent w-4 -ml-2 z-50 hover:bg-transparent flex items-center justify-center group outline-none">
+                            <div className="w-[1px] h-8 bg-gray-200 group-hover:bg-indigo-400 transition-colors rounded-full" />
+                        </PanelResizeHandle>
 
-                    <PanelResizeHandle className="bg-transparent w-4 -ml-2 z-50 hover:bg-transparent flex items-center justify-center group outline-none">
-                        <div className="w-[1px] h-8 bg-gray-200 group-hover:bg-indigo-400 transition-colors rounded-full" />
-                    </PanelResizeHandle>
+                        {/* ---------------- CENTER CANVAS ---------------- */}
+                        <Panel defaultSize={55} minSize={30} className="bg-slate-50/50 relative flex flex-col">
+                            <div className="m-4 flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
+                                <div
+                                    className="w-full h-full"
+                                    onContextMenu={(e) => { e.preventDefault(); setSuggestionPos({ x: e.clientX, y: e.clientY }); }}
+                                >
+                                    <FlowCanvas
+                                        nodes={nodes}
+                                        edges={edges}
+                                        setNodes={setNodes}
+                                        setEdges={setEdges}
+                                        onSelectNode={(n) => handleNodeClick(n as Node)}
+                                        onNodeEdit={(node) => {
+                                            setEditNode(node);
+                                            setModalOpen(true);
+                                        }}
+                                        onAddSuggestion={toggleSuggestionMenu}
+                                    />
 
-                    {/* ---------------- CENTER CANVAS ---------------- */}
-                    <Panel defaultSize={55} minSize={30} className="bg-slate-50/50 relative flex flex-col">
-                        <div className="m-4 flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
-                            <div
-                                className="w-full h-full"
-                                onContextMenu={(e) => { e.preventDefault(); setSuggestionPos({ x: e.clientX, y: e.clientY }); }}
-                            >
-                                <FlowCanvas
-                                    nodes={nodes}
-                                    edges={edges}
-                                    setNodes={setNodes}
-                                    setEdges={setEdges}
-                                    onSelectNode={(n) => handleNodeClick(n as Node)}
-                                    onNodeEdit={(node) => {
-                                        setEditNode(node);
-                                        setModalOpen(true);
-                                    }}
-                                    onAddSuggestion={toggleSuggestionMenu}
-                                />
+                                    <SuggestionMenu
+                                        position={suggestionPos}
+                                        onClose={() => setSuggestionPos(null)}
+                                        onSelect={handleActionSelect}
+                                        context={selectedNodeId ? nodes.find(n => n.id === selectedNodeId)?.data.label : ""}
+                                    />
 
-                                <SuggestionMenu
-                                    position={suggestionPos}
-                                    onClose={() => setSuggestionPos(null)}
-                                    onSelect={handleActionSelect}
-                                />
-
-                                {/* Floating Action Button */}
-                                <div className="absolute top-6 left-6 z-10">
-                                    <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-lg text-xs font-medium text-slate-600 flex items-center gap-2">
-                                        <Plus className="w-3 h-3 text-indigo-500" />
-                                        Right-click to add nodes
+                                    {/* Floating Action Button */}
+                                    <div className="absolute top-6 left-6 z-10">
+                                        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-lg text-xs font-medium text-slate-600 flex items-center gap-2">
+                                            <Plus className="w-3 h-3 text-indigo-500" />
+                                            Right-click to add nodes
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </Panel>
+                        </Panel>
 
-                    <PanelResizeHandle className="bg-transparent w-4 -ml-2 z-50 hover:bg-transparent flex items-center justify-center group outline-none">
-                        <div className="w-[1px] h-8 bg-gray-200 group-hover:bg-indigo-400 transition-colors rounded-full" />
-                    </PanelResizeHandle>
+                        <PanelResizeHandle className="bg-transparent w-4 -ml-2 z-50 hover:bg-transparent flex items-center justify-center group outline-none">
+                            <div className="w-[1px] h-8 bg-gray-200 group-hover:bg-indigo-400 transition-colors rounded-full" />
+                        </PanelResizeHandle>
 
-                    {/* ---------------- RIGHT PREVIEW ---------------- */}
-                    <Panel defaultSize={25} minSize={15} maxSize={40} className="flex flex-col bg-slate-50/50 p-6">
-                        <div className="mb-6">
-                            <h2 className="text-base font-bold text-slate-900 mb-1">Live Preview</h2>
-                            <p className="text-sm text-slate-500">Generated UI updates instantly.</p>
-                        </div>
-
-                        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                            <div className="flex-1 overflow-hidden relative">
-                                <PreviewPane />
+                        {/* ---------------- RIGHT PREVIEW ---------------- */}
+                        <Panel defaultSize={25} minSize={15} maxSize={40} className="flex flex-col bg-slate-50/50 p-6">
+                            <div className="mb-6">
+                                <h2 className="text-base font-bold text-slate-900 mb-1">Live Preview</h2>
+                                <p className="text-sm text-slate-500">Generated UI updates instantly.</p>
                             </div>
-                            <div className="p-3 text-center text-xs text-gray-400 border-t border-gray-100 italic">
-                                Live App Preview Coming Soon
-                            </div>
-                        </div>
-                    </Panel>
 
-                </PanelGroup>
+                            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                                <div className="flex-1 overflow-hidden relative">
+                                    <PreviewPane code={generatedCode} />
+                                </div>
+                                <div className="p-3 text-center text-xs text-gray-400 border-t border-gray-100 italic">
+                                    Live App Preview Coming Soon
+                                </div>
+                            </div>
+                        </Panel>
+
+                    </PanelGroup>
+                )}
             </div>
 
             {/* ---------------- MODALS ---------------- */}
@@ -286,6 +338,11 @@ export default function EditorShell() {
                 open={modalOpen}
                 node={editNode}
                 onClose={() => setModalOpen(false)}
+                onDelete={(id) => {
+                    setNodes((nds) => nds.filter((n) => n.id !== id));
+                    setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+                    setModalOpen(false);
+                }}
                 onSave={(updated) => {
                     if (!editNode) return;
                     setNodes((prev) =>

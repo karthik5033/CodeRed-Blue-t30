@@ -24,8 +24,15 @@ import { Plus } from "lucide-react";
 // Wrapper to add the Bubble-like (+) button
 const CustomNode = ({ data, selected }: NodeProps) => {
   return (
-    <div className="relative group">
-      <div className="h-full w-full relative">
+    <div
+      className={`relative group rounded-xl border-2 transition-all shadow-sm ${selected ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200 hover:border-indigo-300'}`}
+      style={{
+        backgroundColor: data.color || '#ffffff',
+        minHeight: '60px',
+        minWidth: '150px'
+      }}
+    >
+      <div className="h-full w-full relative py-2">
         {/* Top Handle (Target/Source) */}
         <Handle
           id="top"
@@ -34,8 +41,15 @@ const CustomNode = ({ data, selected }: NodeProps) => {
           className="!bg-indigo-300 hover:!bg-indigo-500 !w-3 !h-3 rounded-full opacity-0 group-hover:opacity-100 transition-all border-2 border-white -mt-1.5"
         />
 
-        <div className="p-1 px-2 text-center text-sm font-medium leading-tight min-h-[40px] flex items-center justify-center">
-          {data.label}
+        <div className="px-3">
+          <div className="text-center text-sm font-semibold text-gray-800 leading-tight">
+            {data.label}
+          </div>
+          {data.description && (
+            <div className="mt-2 text-xs text-gray-500 text-center leading-snug border-t border-black/5 pt-2">
+              {data.description}
+            </div>
+          )}
         </div>
 
         {/* Bottom Handle (Source/Target) */}

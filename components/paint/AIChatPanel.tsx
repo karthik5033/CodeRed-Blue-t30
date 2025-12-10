@@ -2,9 +2,16 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, Bot, Wand2, Terminal } from "lucide-react";
+import { Node, Edge } from "reactflow";
 
-export default function AIChatPanel() {
-    const [messages, setMessages] = useState<{ role: "user" | "ai"; text: string }[]>([
+import { generateChatResponse } from "../../app/actions/ai";
+
+interface AIChatPanelProps {
+    onApplyFlow?: (nodes: Node[], edges: Edge[]) => void;
+}
+
+export default function AIChatPanel({ onApplyFlow }: AIChatPanelProps) {
+    const [messages, setMessages] = useState<{ role: "user" | "ai" | "model"; text: string }[]>([
         { role: "ai", text: "Hi! I'm your AvatarFlow Agent. I can help you build workflows, generate boilerplate, or explain concepts. What are we building today?" }
     ]);
     const [input, setInput] = useState("");
@@ -19,23 +26,76 @@ export default function AIChatPanel() {
         scrollToBottom();
     }, [messages, isTyping]);
 
-    const handleSend = (text = input) => {
+    const handleSend = async (text = input) => {
         if (!text.trim()) return;
-        setMessages((prev) => [...prev, { role: "user", text: text }]);
+
+        const userMsg = { role: "user" as const, text: text };
+        setMessages((prev) => [...prev, userMsg]);
         setInput("");
         setIsTyping(true);
 
-        // Mock response
-        setTimeout(() => {
-            setIsTyping(false);
-            let response = "I've updated the workflow based on your request.";
-            if (text.toLowerCase().includes("boilerplate")) {
-                response = "Generating boilerplate code for a new SaaS workflow...";
-            } else if (text.toLowerCase().includes("explain")) {
-                response = "This workflow triggers when a user clicks 'Sign Up', then validates the data, and finally creates a record in the database.";
+        try {
+            // Prepare history for API
+            // Gemini ERROR fix: History must start with 'user'. We strictly remove the first message if it's the default AI greeting or any AI message at the start.
+            // We also filter out the *current* user message from history because 'sendMessage' handles it.
+            let historyMessages = messages;
+
+            // 1. Remove the current (last) user message which we just added to state
+            // (Actually, 'messages' state might not have updated yet in this closure if it was just set? 
+            // no, 'messages' is from the render scope, so it's the *previous* state before the setMessages call above?
+            // Wait, setMessages((prev)...) updates state for *next* render. 
+            // The 'messages' variable here is still the *old* one.
+            // So 'messages' contains [AI Greeting, Previous User, Previous AI...].
+            // It does NOT contain the 'text' we are sending right now. Perfect.
+
+            // 2. Filter leading AI messages
+            while (historyMessages.length > 0 && historyMessages[0].role === 'ai') {
+                historyMessages = historyMessages.slice(1);
             }
-            setMessages((prev) => [...prev, { role: "ai", text: response }]);
-        }, 1500);
+
+            const history = historyMessages.map(m => ({
+                role: (m.role === 'user' ? 'user' : 'model') as "user" | "model",
+                parts: m.text
+            }));
+
+            const responseText = await generateChatResponse(history, text);
+
+            // 🔹 Extract JSON Flow Data if present
+            // Regex handles:
+            // 1. ```json ... ``` (multiline or inline)
+            // 2. ``` ... ``` (generic block if it looks like JSON)
+            // 3. Raw JSON object starting with { "nodes": ...
+            const jsonMatch = responseText.match(/```(?:json)?\s*({[\s\S]*?"nodes"[\s\S]*?"edges"[\s\S]*?})\s*```/) ||
+                responseText.match(/({[\s\S]*?"nodes"[\s\S]*?"edges"[\s\S]*?})/);
+
+            let displayString = responseText;
+
+            if (jsonMatch && onApplyFlow) {
+                try {
+                    const jsonStr = jsonMatch[1] || jsonMatch[0];
+                    const flowData = JSON.parse(jsonStr);
+                    if (flowData.nodes && flowData.edges) {
+                        onApplyFlow(flowData.nodes, flowData.edges);
+
+                        // Strip the JSON from the displayed message to keep it clean
+                        displayString = responseText.replace(jsonMatch[0], "").trim();
+                        if (!displayString) displayString = "✅ Canvas updated with the requested flow.";
+
+                        // Add a small delay/msg for UI feedback
+                        setMessages((prev) => [...prev, { role: "ai", text: displayString }]);
+                        return; // Stop here, don't add the duplicate message below
+                    }
+                } catch (e) {
+                    console.error("Failed to parse AI flow JSON", e);
+                }
+            }
+
+            setMessages((prev) => [...prev, { role: "ai", text: displayString }]);
+        } catch (error) {
+            setMessages((prev) => [...prev, { role: "ai", text: "Sorry, I'm having trouble connecting right now." }]);
+        } finally {
+            setIsTyping(false);
+        }
     };
 
     const QuickAction = ({ icon, label, prompt }: { icon: any, label: string, prompt: string }) => (
@@ -70,8 +130,8 @@ export default function AIChatPanel() {
                             {msg.role === "ai" ? <Sparkles className="w-4 h-4" /> : <span className="text-xs font-bold">You</span>}
                         </div>
                         <div className={`p-3 rounded-2xl text-sm max-w-[85%] shadow-sm ${msg.role === "ai"
-                                ? "bg-white text-gray-700 border border-gray-100 rounded-tl-none"
-                                : "bg-indigo-600 text-white rounded-tr-none"
+                            ? "bg-white text-gray-700 border border-gray-100 rounded-tl-none"
+                            : "bg-indigo-600 text-white rounded-tr-none"
                             }`}>
                             {msg.text}
                         </div>
