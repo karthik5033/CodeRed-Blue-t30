@@ -55,26 +55,39 @@ export const generateAppBoilerplate = async (flowData: any) => {
 
         const prompt = `
     You are an expert React/Next.js developer.
-    Analyze this workflow JSON and generate a single file Next.js component (using Tailwind CSS) that implements this logic.
+    Analyze this workflow JSON and generate a single file React component (using Tailwind CSS) that implements this logic.
     
     Flow Data: ${JSON.stringify(flowData, null, 2)}
     
-    Context:
-    - Nodes represent UI steps or logic.
-    - Edges represent navigation or data flow.
-    - Use standard 'lucide-react' icons where appropriate.
-    - Make it look professional and modern.
-    - Return ONLY the code, no markdown backticks.
+    CRITICAL RULES:
+    1. Return ONLY the code.
+    2. Do NOT import custom components (like "@/components/ui/..."). Define all small components (Buttons, Cards) inside the same file if needed.
+    3. Use 'lucide-react' for icons.
+    4. Use standard HTML/Tailwind classes for styling.
+    5. The default export must be named 'App'.
+    6. Wrap the code in \`\`\`tsx\`\`\`.
+    7. IMPORTANT: Do NOT generate a flowchart view. Convert the flow logic into a REAL Web Application UI.
+       - If the flow is a "Portfolio", generate a Portfolio Landing Page.
+       - If the flow is a "Checkout", generate a Checkout Form.
+       - Use standard Flexbox/Grid layouts. NO absolute positioning. NO 'react-xarrows'.
     `;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        let text = response.text();
+        const text = response.text();
 
-        // Robust cleanup: removing backticks and language identifiers
-        text = text.replace(/```(typescript|tsx|jsx|javascript|react)?/gi, "").replace(/```/g, "").trim();
+        console.log("Gemini Raw Output:", text);
 
-        return text;
+        // Regex to extract code block
+        const match = text.match(/```(?:typescript|tsx|jsx|javascript|react)?([\s\S]*?)```/i);
+
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+
+        // Fallback: mostly clean raw text if no block found
+        return text.replace(/```(typescript|tsx|jsx|javascript|react)?/gi, "").replace(/```/g, "").trim();
+
     } catch (error: any) {
         console.error("Gemini Generation Error:", error);
         return "// Error generating code. Please check server logs.";

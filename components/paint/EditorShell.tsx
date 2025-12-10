@@ -214,6 +214,14 @@ export default function EditorShell() {
                                 console.log("Sending TOON Data:", toonData);
 
                                 const code = await generateAppBoilerplate(toonData);
+                                console.log("GENERATED CODE RECEIVED:", code); // Debug log
+
+                                if (!code || code.trim().length === 0) {
+                                    alert("AI returned empty code.");
+                                } else if (code.startsWith("// Error")) {
+                                    alert("AI generation error: " + code);
+                                }
+
                                 setGeneratedCode(code);
                                 setIsGenerating(false);
                             } catch (e) {
@@ -321,7 +329,7 @@ export default function EditorShell() {
 
                             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                                 <div className="flex-1 overflow-hidden relative">
-                                    <PreviewPane code={generatedCode} />
+                                    <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} />
                                 </div>
                                 <div className="p-3 text-center text-xs text-gray-400 border-t border-gray-100 italic">
                                     Live App Preview Coming Soon

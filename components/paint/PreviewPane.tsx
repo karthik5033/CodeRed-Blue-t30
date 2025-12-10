@@ -5,6 +5,7 @@ import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
 
 interface PreviewPaneProps {
   code?: string;
+  isGenerating?: boolean;
 }
 
 const DEFAULT_CODE = `export default function App() {
@@ -21,41 +22,80 @@ const DEFAULT_CODE = `export default function App() {
   );
 }`;
 
-export default function PreviewPane({ code }: PreviewPaneProps) {
+export default function PreviewPane({ code, isGenerating }: PreviewPaneProps) {
+  const [showCode, setShowCode] = React.useState(false);
+
   return (
-    <div className="h-full w-full">
-      <SandpackProvider
-        template="react-ts"
-        theme="light"
-        files={{
-          "/App.tsx": code || DEFAULT_CODE,
-        }}
-        customSetup={{
-          dependencies: {
-            "lucide-react": "latest",
-            "clsx": "latest",
-            "tailwind-merge": "latest"
-          }
-        }}
-        options={{
-          externalResources: ["https://cdn.tailwindcss.com"]
-        }}
-      >
-        <div className="h-full flex flex-col">
-          <div className="bg-gray-100 border-b border-gray-200 px-3 py-1 text-[10px] text-gray-500 flex justify-between">
-            <span>Preview Running</span>
-            <span>React + Tailwind</span>
+    <div className="h-full w-full flex flex-col">
+      <div className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-xs text-gray-500 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-gray-700">Live Preview</span>
+          <span className="px-1.5 py-0.5 bg-gray-200 rounded text-[10px]">React + Tailwind</span>
+        </div>
+        <button
+          onClick={() => setShowCode(!showCode)}
+          className="text-indigo-600 hover:text-indigo-700 font-medium underline decoration-dotted"
+        >
+          {showCode ? "Hide Code" : "Show Code"}
+        </button>
+      </div>
+
+      <div className="flex-1 relative overflow-hidden bg-slate-50">
+        {/* Loading Overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
+            <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-sm font-medium text-slate-700">Generating App...</p>
           </div>
-          <div className="flex-1 relative">
-            {/* We hide the code editor by default to look like a "Phone" preview, but we could toggle it */}
+        )}
+
+        {/* Code Overlay - now with max height to not block everything if user wants to peek */}
+        {showCode ? (
+          <div className="absolute top-0 left-0 right-0 h-1/2 bg-slate-900 text-slate-50 p-4 overflow-auto text-xs font-mono z-20 shadow-xl border-b border-slate-700">
+            <div className="absolute top-2 right-2 text-slate-400 text-[10px]">read-only</div>
+            <pre>{code || DEFAULT_CODE}</pre>
+          </div>
+        ) : null}
+
+        {!code ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+            <div className="w-16 h-16 mb-4 rounded-xl bg-slate-100 flex items-center justify-center">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+            <p className="text-sm font-medium text-slate-600">No App Generated Yet</p>
+            <p className="text-xs mt-1">Build a flow and click "Generate App"</p>
+          </div>
+        ) : (
+          <SandpackProvider
+            key={code}
+            template="react-ts"
+            theme="light"
+            files={{
+              "/App.tsx": code,
+            }}
+            customSetup={{
+              dependencies: {
+                "lucide-react": "latest",
+                "clsx": "latest",
+                "tailwind-merge": "latest",
+                "react-xarrows": "latest",
+                "react-use-gesture": "latest",
+                "framer-motion": "latest",
+                "react-router-dom": "latest"
+              }
+            }}
+            options={{
+              externalResources: ["https://cdn.tailwindcss.com"]
+            }}
+          >
             <SandpackPreview
               style={{ height: "100%" }}
               showOpenInCodeSandbox={false}
               showRefreshButton={true}
             />
-          </div>
-        </div>
-      </SandpackProvider>
+          </SandpackProvider>
+        )}
+      </div>
     </div>
   );
 }
