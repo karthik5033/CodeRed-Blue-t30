@@ -42,7 +42,7 @@ export default function HeroSection() {
                   size="lg"
                   className="h-12 rounded-full text-base bg-white text-black hover:bg-neutral-200"
                 >
-                  <Link href="/ai-builder">
+                  <Link href="/abc">
                     Start Building <ChevronRight className="ml-2" />
                   </Link>
                 </Button>
@@ -51,9 +51,9 @@ export default function HeroSection() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="h-12 rounded-full text-base border-white text-white hover:bg-white/10"
+                  className="h-12 rounded-full text-base border-white bg-transparent text-white hover:bg-white hover:text-slate-900 transition-colors"
                 >
-                  <Link href="/docs/getting-started">Learn How It Works</Link>
+                  <Link href="/ai-builder">AI Prompter</Link>
                 </Button>
               </div>
             </div>

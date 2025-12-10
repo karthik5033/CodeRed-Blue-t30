@@ -107,7 +107,7 @@ export default function IntegrationsSection() {
                             variant="outline"
                             size="sm"
                             asChild>
-                            <Link href="#">Get Started</Link>
+                            <Link href="/docs">Get Started</Link>
                         </Button>
                     </div>
                 </div>
