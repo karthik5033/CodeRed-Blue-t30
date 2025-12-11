@@ -91,6 +91,22 @@ export function getById(tableName: string, id: number | string) {
     }
 }
 
+export function findOne(tableName: string, condition: Record<string, any>) {
+    try {
+        const db = readDB();
+        if (!db.tables[tableName]) {
+            return { success: false, error: 'Table does not exist' };
+        }
+
+        const row = db.tables[tableName].rows.find(r => {
+            return Object.entries(condition).every(([key, value]) => r[key] === value);
+        });
+        return { success: true, data: row };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
 export function update(tableName: string, id: number | string, data: Record<string, any>) {
     try {
         const db = readDB();
@@ -100,10 +116,14 @@ export function update(tableName: string, id: number | string, data: Record<stri
 
         const index = db.tables[tableName].rows.findIndex(r => r.id == id);
         if (index === -1) {
-            return { success: false, error: 'Record not found' };
+            return { success: false, error: 'Row not found' };
         }
 
-        db.tables[tableName].rows[index] = { ...db.tables[tableName].rows[index], ...data };
+        db.tables[tableName].rows[index] = {
+            ...db.tables[tableName].rows[index],
+            ...data,
+            updated_at: new Date().toISOString()
+        };
         writeDB(db);
 
         return { success: true, changes: 1 };
@@ -112,7 +132,7 @@ export function update(tableName: string, id: number | string, data: Record<stri
     }
 }
 
-export function deleteRecord(tableName: string, id: number | string) {
+export function deleteRow(tableName: string, id: number | string) {
     try {
         const db = readDB();
         if (!db.tables[tableName]) {
@@ -122,6 +142,7 @@ export function deleteRecord(tableName: string, id: number | string) {
         const initialLength = db.tables[tableName].rows.length;
         db.tables[tableName].rows = db.tables[tableName].rows.filter(r => r.id != id);
         const changes = initialLength - db.tables[tableName].rows.length;
+
         writeDB(db);
 
         return { success: true, changes };
@@ -130,38 +151,22 @@ export function deleteRecord(tableName: string, id: number | string) {
     }
 }
 
-export function getTables() {
-    try {
-        const db = readDB();
-        const tables = Object.keys(db.tables).map(name => ({ name }));
-        return { success: true, data: tables };
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
-}
-
-export function deleteTable(tableName: string) {
-    try {
-        const db = readDB();
-        if (db.tables[tableName]) {
-            delete db.tables[tableName];
-            writeDB(db);
-            return { success: true, message: `Table ${tableName} deleted` };
-        }
-        return { success: false, error: 'Table not found' };
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
-}
-
-export function getTableSchema(tableName: string) {
+export function query(tableName: string, condition?: Record<string, any>) {
     try {
         const db = readDB();
         if (!db.tables[tableName]) {
             return { success: false, error: 'Table does not exist' };
         }
 
-        return { success: true, data: db.tables[tableName].columns };
+        let rows = db.tables[tableName].rows;
+
+        if (condition) {
+            rows = rows.filter(r => {
+                return Object.entries(condition).every(([key, value]) => r[key] === value);
+            });
+        }
+
+        return { success: true, data: rows };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -195,6 +200,56 @@ export function dropTable(tableName: string) {
     }
 }
 
+export function getTables() {
+    try {
+        const db = readDB();
+        const tableNames = Object.keys(db.tables).map(name => ({ name }));
+        return { success: true, data: tableNames };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export function getTableSchema(tableName: string) {
+    try {
+        const db = readDB();
+        if (!db.tables[tableName]) {
+            return { success: false, error: 'Table does not exist' };
+        }
+
+        const schema = db.tables[tableName].columns;
+        return { success: true, schema };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
 export function executeSQL(sql: string, params: any[] = []) {
     return { success: false, error: 'Raw SQL not supported in JSON database' };
 }
+
+// Initialize visual builder tables
+createTable('visualProjects', [
+    { name: 'name', type: 'TEXT' },
+    { name: 'data', type: 'TEXT' }
+]);
+
+createTable('visualPages', [
+    { name: 'project_id', type: 'TEXT' },
+    { name: 'name', type: 'TEXT' },
+    { name: 'elements', type: 'TEXT' }
+]);
+
+// Initialize app data tables for generated apps
+createTable('app_users', [
+    { name: 'project_id', type: 'TEXT' },
+    { name: 'email', type: 'TEXT' },
+    { name: 'password_hash', type: 'TEXT' },
+    { name: 'name', type: 'TEXT' }
+]);
+
+createTable('app_form_submissions', [
+    { name: 'project_id', type: 'TEXT' },
+    { name: 'form_id', type: 'TEXT' },
+    { name: 'data', type: 'TEXT' }
+]);

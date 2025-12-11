@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(updateResult);
 
             case 'delete':
-                const deleteResult = db.deleteRecord(table, id);
+                const deleteResult = db.deleteRow(table, id);
                 return NextResponse.json(deleteResult);
 
             case 'clear':
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(dropResult);
 
             case 'delete_table':
-                const deleteTableResult = db.deleteTable(table);
+                const deleteTableResult = db.dropTable(table);
                 return NextResponse.json(deleteTableResult);
 
             case 'execute':

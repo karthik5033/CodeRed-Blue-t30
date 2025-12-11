@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         const response = result.response.text();
 
         // Extract files from response
-        const modifiedFiles = parseAIResponse(response);
+        const { files: modifiedFiles } = parseAIResponse(response);
         console.log('[Modify API] Parsed', modifiedFiles.length, 'files from AI response');
 
         return NextResponse.json({
