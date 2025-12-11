@@ -73,20 +73,21 @@ export default function PreviewPane({ code, isGenerating, tokenStats }: PreviewP
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Simple Color Picker */}
-          <div className="flex gap-1 mr-2">
-            {(['blue', 'emerald', 'rose', 'amber'] as const).map(c => (
-              <button
-                key={c}
-                onClick={() => handleColorChange(c)}
-                className={`w-3 h-3 rounded-full hover:scale-125 transition-transform ring-1 ring-gray-200 ${c === 'blue' ? 'bg-blue-500' :
-                  c === 'emerald' ? 'bg-emerald-500' :
-                    c === 'rose' ? 'bg-rose-500' : 'bg-amber-500'
-                  }`}
-                title={`Switch to ${c}`}
-              />
-            ))}
-          </div>
+          <button
+            onClick={() => {
+              // Save current code to localStorage to pass to the customize page
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('avtarflow_current_code', activeCode);
+                // Use window.location as a fallback if router push isn't available or simple
+                // navigation is preferred.
+                window.location.href = '/customize';
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-md text-xs font-medium hover:bg-indigo-100 transition-colors"
+          >
+            <Palette className="w-3.5 h-3.5" />
+            Customize
+          </button>
 
           <button
             onClick={() => setShowConsole(!showConsole)}

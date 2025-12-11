@@ -42,7 +42,7 @@ export default function HeroSection() {
                   size="lg"
                   className="h-12 rounded-full text-base bg-white text-black hover:bg-neutral-200"
                 >
-                  <Link href="/abc">
+                  <Link href="/builder">
                     Start Building <ChevronRight className="ml-2" />
                   </Link>
                 </Button>

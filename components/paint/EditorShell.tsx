@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Node, Edge } from "reactflow";
+import { Node, Edge, ReactFlowInstance } from "reactflow";
 import { Play, Search, Settings, ChevronRight, Monitor, Smartphone, Maximize2, Plus } from "lucide-react";
 
 import FlowCanvas from "./FlowCanvas";
@@ -11,8 +11,9 @@ import SuggestionMenu from "./SuggestionMenu";
 import AIChatPanel from "./AIChatPanel";
 
 import { toTOON } from "../../utils/toon";
-import { generateAppBoilerplate } from "../../app/actions/ai";
+import { generateAppBoilerplate, generateFlowFromImage } from "../../app/actions/ai";
 import { PanelResizeHandle, Panel, PanelGroup } from "react-resizable-panels";
+import { Upload } from "lucide-react";
 
 /* ------------------ PALETTE COMPONENTS ------------------ */
 function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -47,6 +48,13 @@ export default function EditorShell() {
     const [generatedCode, setGeneratedCode] = useState<string | undefined>(undefined);
     const [pendingChatMsg, setPendingChatMsg] = useState<string | null>(null);
     const [tokenStats, setTokenStats] = useState<{ jsonSize: number; toonSize: number; savedPercent: number } | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    // File Input Ref
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    /* 🔹 ReactFlow Instance for fitView control */
+    const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
     /* 🔹 ReactFlow State */
     const [nodes, setNodes] = useState<Node[]>([
@@ -191,6 +199,38 @@ export default function EditorShell() {
         setSuggestionPos(null);
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            // Convert to Base64
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                console.log("Image uploaded, sending to Gemini...");
+
+                const flowData = await generateFlowFromImage(base64);
+                if (flowData && flowData.nodes && flowData.edges) {
+                    setNodes(flowData.nodes);
+                    setEdges(flowData.edges);
+                    if (reactFlowInstance) {
+                        setTimeout(() => reactFlowInstance.fitView(), 500);
+                    }
+                } else {
+                    alert("Could not generate flow from image. Try a clearer image.");
+                }
+                setIsUploading(false);
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error(error);
+            setIsUploading(false);
+            alert("Upload failed.");
+        }
+    };
+
     return (
         <div className="flex flex-col h-screen w-full bg-white text-slate-900 font-sans">
 
@@ -203,6 +243,21 @@ export default function EditorShell() {
                     <span className="text-xs text-slate-500 font-medium">Build apps visually.</span>
                 </div>
                 <div className="flex items-center gap-3">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2"
+                    >
+                        {isUploading ? <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-slate-700 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        Upload Flow
+                    </button>
                     <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                         Export
                     </button>
@@ -309,7 +364,36 @@ export default function EditorShell() {
                             {/* AI Chat Layout Adjustment */}
                             <div className="border-t border-gray-100 h-[350px]">
                                 <AIChatPanel
-                                    onApplyFlow={(newNodes, newEdges) => { setNodes(newNodes); setEdges(newEdges); }}
+                                    onApplyFlow={(newNodes, newEdges) => {
+                                        // 1. Normalize Coordinates: Shift top-left-most node to (100, 100)
+                                        // This prevents the AI from generating nodes at (10000, 10000) or negative space
+                                        if (newNodes.length > 0) {
+                                            const minX = Math.min(...newNodes.map(n => n.position.x));
+                                            const minY = Math.min(...newNodes.map(n => n.position.y));
+
+                                            const shiftedNodes = newNodes.map(n => ({
+                                                ...n,
+                                                position: {
+                                                    x: n.position.x - minX + 100,
+                                                    y: n.position.y - minY + 100
+                                                }
+                                            }));
+
+                                            setNodes(shiftedNodes);
+                                        } else {
+                                            setNodes(newNodes);
+                                        }
+
+                                        setEdges(newEdges);
+
+                                        // 2. Force Fit View
+                                        if (reactFlowInstance) {
+                                            // Small delay to allow React Render cycle to complete
+                                            setTimeout(() => {
+                                                reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+                                            }, 200);
+                                        }
+                                    }}
                                     forceMessage={pendingChatMsg}
                                 />
                             </div>
@@ -337,6 +421,7 @@ export default function EditorShell() {
                                             setModalOpen(true);
                                         }}
                                         onAddSuggestion={toggleSuggestionMenu}
+                                        onInit={(instance) => setReactFlowInstance(instance)}
                                     />
 
                                     <SuggestionMenu

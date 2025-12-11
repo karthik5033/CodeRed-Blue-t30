@@ -150,6 +150,7 @@ export const generateAppBoilerplate = async (flowData: any) => {
             return match[1].trim();
         }
 
+
         // Fallback: mostly clean raw text if no block found
         return text.replace(/```(typescript|tsx|jsx|javascript|react)?/gi, "").replace(/```/g, "").trim();
 
@@ -158,3 +159,84 @@ export const generateAppBoilerplate = async (flowData: any) => {
         return "// Error generating code. Please check server logs.";
     }
 };
+
+export const suggestImage = async (query: string) => {
+    if (!apiKey) return null;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `
+        You are an image search assistant.
+        The user wants an image for: "${query}".
+        Return A SINGLE valid, high-quality Unsplash image URL that matches this description.
+        Prefer general, high-resolution images.
+        Format: ONLY the URL string. No text, no markdown.
+        Example: https://images.unsplash.com/photo-123456789...
+        `;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim();
+        return text.startsWith("http") ? text : null;
+    } catch (error) {
+        console.error("Image Suggestion Error:", error);
+        return null; // Return null on failure
+    }
+}
+
+export const generateFlowFromImage = async (base64Image: string) => {
+    if (!apiKey) return null;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = `
+        Analyze this flowchart/diagram image and extract the nodes and edges into a JSON format compatible with React Flow.
+        
+        The JSON structure must be: 
+        { 
+            "nodes": [{ "id": "1", "type": "default", "position": { "x": 100, "y": 100 }, "data": { "label": "Start", "description": "Details about this step" } }], 
+            "edges": [{ "id": "e1-2", "source": "1", "target": "2" }] 
+        }
+
+        CRITICAL:
+        - Return ONLY the raw JSON. No markdown.
+        - Ensure nodes are spread out visually (x/y coordinates).
+        - "description" is important. If the image has text like "Login Page with Google Auth", put that in description.
+        - Make sure "source" and "target" in edges match the "id" of nodes.
+        `;
+
+        // Split the base64 string to get the mime type and data
+        // Expected format: "data:image/png;base64,..."
+        const match = base64Image.match(/^data:(image\/[a-z]+);base64,(.+)$/);
+
+        if (!match) {
+            throw new Error("Invalid image format");
+        }
+
+        const mimeType = match[1];
+        const data = match[2];
+
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: data,
+                    mimeType: mimeType
+                }
+            }
+        ]);
+
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Flow Image Generation Error:", error);
+        return null;
+    }
+};
+

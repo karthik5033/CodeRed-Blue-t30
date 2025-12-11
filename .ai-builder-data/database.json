@@ -92,6 +92,32 @@
         }
       ],
       "rows": []
+    },
+    "posts": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY"
+        },
+        {
+          "name": "title",
+          "type": "TEXT"
+        },
+        {
+          "name": "content",
+          "type": "TEXT"
+        },
+        {
+          "name": "userId",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT"
+        }
+      ],
+      "rows": []
     }
   }
 }

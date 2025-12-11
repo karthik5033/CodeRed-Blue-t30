@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Background, BackgroundVariant, useReactFlow } from "reactflow";
+import { Background, BackgroundVariant, useReactFlow, ReactFlowInstance } from "reactflow";
 import ReactFlow, {
   addEdge,
   Controls,
@@ -110,9 +110,10 @@ type Props = {
   onSelectNode: (node: { id: string; label?: string; type?: string; data?: any } | null) => void;
   onNodeEdit: (node: Node) => void;
   onAddSuggestion?: (e: any) => void;
+  onInit?: (instance: ReactFlowInstance) => void;
 };
 
-export default function FlowCanvas({ nodes, edges, setNodes, setEdges, onSelectNode, onNodeEdit, onAddSuggestion }: Props) {
+export default function FlowCanvas({ nodes, edges, setNodes, setEdges, onSelectNode, onNodeEdit, onAddSuggestion, onInit }: Props) {
 
   // Listen for custom event from CustomNode
   React.useEffect(() => {
@@ -148,7 +149,9 @@ export default function FlowCanvas({ nodes, edges, setNodes, setEdges, onSelectN
         onConnect={onConnect}
         onNodeClick={(_e, node) => onSelectNode(node)}
         onNodeDoubleClick={(_e, node) => onNodeEdit(node)}
+        onInit={onInit}
         nodeTypes={nodeTypes}
+
         fitView
         attributionPosition="bottom-left"
         defaultEdgeOptions={{
