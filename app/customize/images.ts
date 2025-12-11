@@ -129,7 +129,6 @@ export const MEDIA_LIBRARY = [
     { url: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=800&q=80", label: "City Building", tags: ["arch", "city"] },
     { url: "https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&w=800&q=80", label: "Modern Home", tags: ["interior", "home"] },
     { url: "https://images.unsplash.com/photo-1519999482648-25049ddd37b1?auto=format&fit=crop&w=800&q=80", label: "Bright Hall", tags: ["arch", "white"] },
-    { url: "https://images.unsplash.com/photo-1616486338812-3dadae4b4f9d?auto=format&fit=crop&w=800&q=80", label: "Cozy Living", tags: ["interior", "cozy"] },
     { url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=800&q=80", label: "White Sofa", tags: ["interior", "white"] },
     { url: "https://images.unsplash.com/photo-1616137466211-f939a420be84?auto=format&fit=crop&w=800&q=80", label: "Cozy Bedroom", tags: ["interior", "home"] },
     { url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80", label: "Office Space", tags: ["interior", "work"] },

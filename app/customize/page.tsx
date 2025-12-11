@@ -63,13 +63,25 @@ export default function CustomizePage() {
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const savedCode = localStorage.getItem('avtarflow_current_code');
-            if (savedCode) {
+            if (savedCode && savedCode.trim().length > 10) {
+                // Only load if valid code exists
+                console.log("Restoring session from localStorage...");
                 setHistory([savedCode]);
                 setHistoryIndex(0);
                 setCode(savedCode);
             }
         }
     }, []);
+
+    // Save to LocalStorage on Change
+    useEffect(() => {
+        if (code && code.trim().length > 10) {
+            const timeoutId = setTimeout(() => {
+                localStorage.setItem('avtarflow_current_code', code);
+            }, 1000); // 1s debounce to avoid thrashing
+            return () => clearTimeout(timeoutId);
+        }
+    }, [code]);
 
     // Load AI Suggestions on AI Tab
     useEffect(() => {
@@ -692,7 +704,7 @@ export default function CustomizePage() {
                                                 : "AI-powered suggestions based on your current design."}
                                         </p>
 
-                                        <div className="space-y-3 mt-4">
+                                        <div className="space-y-3 mt-4 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent">
                                             {isLoadingSuggestions ? (
                                                 <div className="space-y-2">
                                                     {[1, 2, 3].map(i => (
@@ -703,14 +715,31 @@ export default function CustomizePage() {
                                                 (aiSuggestions.length > 0 ? aiSuggestions : [
                                                     "Make it dark mode",
                                                     "Add a contact form",
-                                                    "Make buttons pill shaped"
+                                                    "Make buttons pill shaped",
+                                                    "Improve accessibility colors",
+                                                    "Add a sticky navbar",
+                                                    "Use a better color palette",
+                                                    "Add loading skeletons",
+                                                    "Implement responsive grid",
+                                                    "Add hover effects to cards",
+                                                    "Increase whitespace",
+                                                    "Use a serif font for headings",
+                                                    "Add a 'Back to Top' button",
+                                                    "Add a newsletter signup",
+                                                    "Create a testimonial section",
+                                                    "Add social media icons",
+                                                    "Use a gradient background",
+                                                    "Add a pricing table",
+                                                    "Add a search bar",
+                                                    "Improve form validation",
+                                                    "Add a cookie consent banner"
                                                 ]).map((suggestion, i) => (
                                                     <button
                                                         key={i}
                                                         onClick={() => setPrompt(suggestion)}
-                                                        className="w-full text-left px-3 py-2 text-[11px] text-indigo-600 bg-white border border-indigo-100 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all flex items-center gap-2"
+                                                        className="w-full text-left px-3 py-2 text-[11px] text-indigo-600 bg-white border border-indigo-100 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all flex items-center gap-2 group"
                                                     >
-                                                        <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                        <Sparkles className="w-3 h-3 text-indigo-400 shrink-0 group-hover:text-indigo-600 transition-colors" />
                                                         <span className="truncate">{suggestion}</span>
                                                     </button>
                                                 ))

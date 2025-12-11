@@ -75,6 +75,10 @@ export const generateAppBoilerplate = async (flowData: any) => {
     4. Use standard HTML/Tailwind classes.
     5. The default export must be named 'App'.
     6. Wrap the code in \`\`\`tsx\`\`\`.
+    7. **NO EXTERNAL LIBRARIES**:
+       - DO NOT use 'react-hook-form', 'zod', 'react-toastify', or 'yup'.
+       - Use simple React \`useState\` for all forms.
+       - Use \`framer-motion\` for animations.
     
     WORLD-CLASS DESIGN SYSTEM (MANDATORY):
     Your goal is to win a generic "Best UI of the Year" award.
@@ -116,15 +120,30 @@ export const generateAppBoilerplate = async (flowData: any) => {
          - "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80"
          - "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=800&q=80"
          - "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=800&q=80"
+         - "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80"
+         - "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
        - **People/Office**:
          - "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80"
          - "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
+         - "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80"
+         - "https://images.unsplash.com/photo-1531545514256-b1400bc00f31?auto=format&fit=crop&w=800&q=80"
        - **Avatars**:
          - "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80"
          - "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
-       - **Products**:
+         - "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"
+         - "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80"
+         - "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"
+       - **Products/Lifestyle**:
          - "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80" (Headphones)
          - "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80" (Camera)
+         - "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80" (Shoes)
+         - "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" (Watch)
+         - "https://images.unsplash.com/photo-1585386959960-5f9977f09314?auto=format&fit=crop&w=800&q=80" (Perfume)
+
+       **CRITICAL RULE: NO DUPLICATES**
+       - You MUST NOT use the same image URL twice in the same component.
+       - If you have a grid of 4 items, use 4 DIFFERENT URLs from the list.
+       - If you run out of specific category images, use an 'Abstract/Tech' image as a fallback.
 
     8. **Interactive "Backend" Simulation**:
        - **Loading States**: All buttons must show a spinner ('animate-spin') for 1.5s when clicked.
@@ -250,14 +269,14 @@ export const suggestImprovements = async (code: string) => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const prompt = `
-        Analyze the following React component code and suggest 4 specific, high-impact improvements or features.
+        Analyze the following React component code and suggest 20 specific, high-impact improvements or features.
         Focus on UX, UI, or missing standard functionality.
         
         CODE:
         ${code.substring(0, 15000)} // Limit context
 
         RETURN STRICT JSON ARRAY OF STRINGS:
-        ["Add dark mode support", "Improve button contrast", "Add a footer section", "Add form validation"]
+        ["Add dark mode support", "Improve button contrast", "Add a footer section", "Add form validation", ...]
         `;
 
         const result = await model.generateContent(prompt);
@@ -285,6 +304,19 @@ export const editReactComponent = async (code: string, userPrompt: string) => {
         3. Maintain all existing imports (lucide-react, framer-motion, etc.).
         4. If the user asks for a specific feature (e.g. "Dark Mode"), implement it fully using Tailwind classes and State.
         5. DO NOT remove existing functionality unless explicitly asked.
+        6. **NO EXTERNAL LIBRARIES**: Do NOT use 'react-hook-form', 'zod', or 'react-toastify'. Use standard \`useState\`.
+
+        IMAGE SEARCH CAPABILITY (CRITICAL):
+        If the user asks to "find an image", "add a photo", or "replace image with X", WITHOUT EXCEPTION, use one of these VERIFIED Unsplash URLs. DO NOT hallucinate IDs.
+        
+        - Abstract/Tech: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80"
+        - Nature: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80"
+        - Business: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"
+        - Food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80"
+        - Animals: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&q=80" (Cat), "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80" (Dog)
+        - Travel: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80"
+        
+        If the user asks for something not listed, pick the closest category or use a generic "Abstract" one. NEVER leave src="" empty.
 
         EXISTING CODE:
         ${code}

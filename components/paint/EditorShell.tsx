@@ -124,7 +124,34 @@ export default function EditorShell() {
 
     React.useEffect(() => {
         setMounted(true);
+        // Restore from LocalStorage
+        if (typeof window !== 'undefined') {
+            const savedNodes = localStorage.getItem('avtarflow_nodes');
+            const savedEdges = localStorage.getItem('avtarflow_edges');
+            if (savedNodes) {
+                try {
+                    const parsedNodes = JSON.parse(savedNodes);
+                    if (Array.isArray(parsedNodes) && parsedNodes.length > 0) setNodes(parsedNodes);
+                } catch (e) { console.error("Failed to parse nodes", e); }
+            }
+            if (savedEdges) {
+                try {
+                    const parsedEdges = JSON.parse(savedEdges);
+                    if (Array.isArray(parsedEdges)) setEdges(parsedEdges);
+                } catch (e) { console.error("Failed to parse edges", e); }
+            }
+        }
     }, []);
+
+    // Auto-Save Nodes & Edges
+    React.useEffect(() => {
+        if (!mounted) return;
+        const timeoutId = setTimeout(() => {
+            localStorage.setItem('avtarflow_nodes', JSON.stringify(nodes));
+            localStorage.setItem('avtarflow_edges', JSON.stringify(edges));
+        }, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [nodes, edges, mounted]);
 
     /* 🔹 Handlers */
     const handleAddNode = (label: string) => {
