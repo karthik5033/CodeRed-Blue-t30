@@ -36,7 +36,7 @@ export const generateChatResponse = async (history: { role: "user" | "model"; pa
         // Convert history to Gemini format (ensure role is 'user' or 'model')
         const chat = model.startChat({
             history: history.map(h => ({
-                role: h.role === 'ai' ? 'model' : h.role, // Handle 'ai' -> 'model' mapping just in case
+                role: h.role, // Logic simplified as input is typed "user" | "model"
                 parts: [{ text: h.parts }]
             })),
             generationConfig: {
@@ -98,10 +98,10 @@ export const generateAppBoilerplate = async (flowData: any) => {
        - Use 'AnimatePresence' for conditional rendering (modals, tabs).
        
     4. **Components**:
-       - **Cards**: rounded-xl, border, bg-white, shadow-sm, hover:shadow-md transition-all.
-       - **Inputs**: rounded-lg, border-slate-200, focus:ring-2 focus:ring-indigo-500/20.
-       - **Buttons**: rounded-lg, font-medium, shadow-sm. Primary: bg-slate-900 text-white hover:bg-slate-800.
-       
+       - **Buttons**: Rounded-lg, font-medium, subtle border.
+       - **Cards**: Bg-white, border-slate-100, shadow-sm, rounded-xl.
+       - **Inputs**: Bg-slate-50, border-slate-200, focus:ring-2 ring-indigo-500/20.
+    
     5. **Content Realism**:
        - Do NOT use "Lorem Ipsum". Write real copy ("Welcome back, Karthik", "Revenue: $12,450").
        - Mock REAL data structures (arrays of objects) and render them.
@@ -200,7 +200,11 @@ export const generateFlowFromImage = async (base64Image: string) => {
 
         CRITICAL:
         - Return ONLY the raw JSON. No markdown.
-        - Ensure nodes are spread out visually (x/y coordinates).
+        - **LAYOUT SPACING (MANDATORY)**:
+          - Use MASSIVE spacing between nodes to prevent overlap.
+          - Vertical gap (y-axis) must be at least **150 pixels**.
+          - Horizontal gap (x-axis) must be at least **300 pixels**.
+          - Do not cluster nodes. Spread them out widely.
         - "description" is important. If the image has text like "Login Page with Google Auth", put that in description.
         - Make sure "source" and "target" in edges match the "id" of nodes.
         `;
@@ -237,6 +241,69 @@ export const generateFlowFromImage = async (base64Image: string) => {
     } catch (error) {
         console.error("Flow Image Generation Error:", error);
         return null;
+    }
+};
+
+export const suggestImprovements = async (code: string) => {
+    if (!apiKey) return ["Error: API Key missing"];
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `
+        Analyze the following React component code and suggest 4 specific, high-impact improvements or features.
+        Focus on UX, UI, or missing standard functionality.
+        
+        CODE:
+        ${code.substring(0, 15000)} // Limit context
+
+        RETURN STRICT JSON ARRAY OF STRINGS:
+        ["Add dark mode support", "Improve button contrast", "Add a footer section", "Add form validation"]
+        `;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        console.error("Suggestion Error", e);
+        return ["Add more content sections", "Improve color scheme", "Add interactive elements"];
+    }
+};
+
+export const editReactComponent = async (code: string, userPrompt: string) => {
+    if (!apiKey) return code;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `
+        You are a Senior React Engineer.
+        Using the existing code below, implement the following request: "${userPrompt}"
+
+        CRITICAL RULES:
+        1. Return the FULL, VALID, RUNNABLE React component code.
+        2. Do NOT truncate or skip sections ("... same as before"). WRite the whole file.
+        3. Maintain all existing imports (lucide-react, framer-motion, etc.).
+        4. If the user asks for a specific feature (e.g. "Dark Mode"), implement it fully using Tailwind classes and State.
+        5. DO NOT remove existing functionality unless explicitly asked.
+
+        EXISTING CODE:
+        ${code}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+
+        // Robust extraction of code block
+        const match = text.match(/```(?:tsx|jsx|javascript|typescript)?\s*([\s\S]*?)```/);
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+
+        // Fallback: cleanup if no strict block found
+        return text.replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/, "").trim();
+    } catch (e) {
+        console.error("Edit Error", e);
+        throw e;
     }
 };
 

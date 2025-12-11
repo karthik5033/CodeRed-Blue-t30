@@ -5,10 +5,31 @@ import Link from "next/link";
 import {
     ArrowLeft, Sparkles, Palette, Type, Undo, Redo, Copy, Download,
     Monitor, Tablet, Smartphone, Check, Layout, Image as ImageIcon,
-    Sliders, MousePointer2, ChevronDown
+    Sliders, MousePointer2, ChevronDown, Search
 } from "lucide-react";
 import { SandpackProvider, SandpackPreview, SandpackLayout } from "@codesandbox/sandpack-react";
-import { generateChatResponse, suggestImage } from "../actions/ai";
+import { generateChatResponse, suggestImage, suggestImprovements, editReactComponent } from "../actions/ai";
+import { MEDIA_LIBRARY } from "./images";
+import { EDITOR_FONTS } from "./fonts";
+
+// --- UI Helper: Collapsible Section ---
+const CollapsibleSection = ({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    return (
+        <section className="border-b border-gray-100 last:border-0 pb-4 mb-4 last:pb-0 last:mb-0">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between py-2 group"
+            >
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer group-hover:text-slate-600 transition-colors">{title}</label>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+                {children}
+            </div>
+        </section>
+    );
+};
 
 export default function CustomizePage() {
     // ---------------- STATE ----------------
@@ -24,12 +45,19 @@ export default function CustomizePage() {
     const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
     const [copied, setCopied] = useState(false);
 
-    // Content Extraction
-    const [textFields, setTextFields] = useState<{ id: string, label: string, value: string, index: number }[]>([]);
+    // AI Suggestions
+    const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
-    // Image Search
+    // Content Extraction
+    const [textFields, setTextFields] = useState<{ id: string, label: string, value: string, rawValue: string, index: number }[]>([]);
+
+    // Image Search & Selection
     const [imageQuery, setImageQuery] = useState("");
+    const [localSearchQuery, setLocalSearchQuery] = useState("");
     const [isSearchingImage, setIsSearchingImage] = useState(false);
+    const [detectedImages, setDetectedImages] = useState<string[]>([]);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // ---------------- EFFECTS ----------------
     useEffect(() => {
@@ -43,31 +71,86 @@ export default function CustomizePage() {
         }
     }, []);
 
-    // Extract Text Content
+    // Load AI Suggestions on AI Tab
+    useEffect(() => {
+        if (activeTab === 'ai' && aiSuggestions.length === 0 && code) {
+            handleLoadSuggestions();
+        }
+    }, [activeTab]);
+
+    const handleLoadSuggestions = async () => {
+        setIsLoadingSuggestions(true);
+        try {
+            const suggestions = await suggestImprovements(code);
+            if (Array.isArray(suggestions)) {
+                setAiSuggestions(suggestions);
+            }
+        } catch (e) {
+            console.error("Failed to load suggestions", e);
+        } finally {
+            setIsLoadingSuggestions(false);
+        }
+    };
+
+    // Extract Text Content & Images
     useEffect(() => {
         if (!code) return;
+
+        // 1. Text Fields
         const regex = />([^<{]+)</g;
         let match;
         const fields = [];
         let i = 0;
 
         while ((match = regex.exec(code)) !== null) {
-            const text = match[1].trim();
-            if (text.length > 2) {
+            const rawText = match[1]; // Keep exact whitespace for replacement
+            const trimmedText = rawText.trim();
+            if (trimmedText.length > 2) {
                 fields.push({
                     id: `field-${i}`,
-                    label: text.substring(0, 20) + (text.length > 20 ? '...' : ''),
-                    value: text,
+                    label: trimmedText.substring(0, 20) + (trimmedText.length > 20 ? '...' : ''),
+                    value: trimmedText, // For display
+                    rawValue: rawText,  // For replacement
                     index: i
                 });
                 i++;
             }
         }
-        // Only update if length differs significantly to prevent jitter
-        // (In a real app, we'd use a more stable ID generation)
         if (fields.length !== textFields.length || fields[0]?.value !== textFields[0]?.value) {
             setTextFields(fields);
         }
+
+        // 2. Extract Images
+        const urls: string[] = [];
+        // A. src attributes (generic)
+        const srcMatches = code.matchAll(/src="([^"]+)"/g);
+        for (const m of srcMatches) {
+            if (m[1].match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || m[1].includes('images.unsplash.com')) {
+                urls.push(m[1]);
+            }
+        }
+
+        // B. Inline styles: url('...')
+        const urlMatches = code.matchAll(/url\(['"]?([^'"\)]+)['"]?\)/g);
+        for (const m of urlMatches) urls.push(m[1]);
+
+        // C. Specific Unsplash fallback (for raw text URLs if valid)
+        const unsplashMatches = code.matchAll(/(https:\/\/images\.unsplash\.com\/[^"'\)\s>]+)/g);
+        for (const m of unsplashMatches) {
+            // Avoid dupes from src/url matches
+            if (!urls.includes(m[1])) urls.push(m[1]);
+        }
+
+        // Unique only & valid http/https
+        const uniqueImages = Array.from(new Set(urls)).filter(u => u.startsWith('http'));
+        // Only update if changed to avoid loops
+        setDetectedImages(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(uniqueImages)) {
+                return uniqueImages;
+            }
+            return prev;
+        });
+
     }, [code]);
 
     // ---------------- ACTIONS ----------------
@@ -116,15 +199,15 @@ export default function CustomizePage() {
         if (!prompt.trim() || !code) return;
         setIsGenerating(true);
         try {
-            const fullPrompt = `Here is my current React component code:\n\n${code}\n\nUser Request: ${prompt}\n\nPlease modify the code to satisfy the user request. Return ONLY the full, valid React component code.`;
-            const historyData = [{ role: "user" as const, parts: fullPrompt }];
-            let response = await generateChatResponse(historyData, prompt);
-            response = response.replace(/^```(tsx|jsx|javascript|typescript)?\n/, "").replace(/\n```$/, "");
+            // Using robust edit component
+            const response = await editReactComponent(code, prompt);
             updateCode(response);
             setPrompt("");
+            // Clear suggestions to allow re-analysis
+            setAiSuggestions([]);
         } catch (error) {
             console.error("AI Edit failed:", error);
-            alert("Failed to update code with AI.");
+            alert("Failed to update code with AI. Please try again.");
         } finally {
             setIsGenerating(false);
         }
@@ -136,8 +219,34 @@ export default function CustomizePage() {
         updateCode(updated);
     };
 
-    const applyFont = (fontFamily: string) => {
-        const updated = code.replace(/font-(sans|serif|mono)/g, fontFamily);
+    const applyFont = (fontName: string, fontValue: string, fontUrl: string) => {
+        let updated = code;
+
+        // 1. Clean up old text classes (font-sans, font-serif, font-['...']) safely
+        updated = updated.replace(/font-['a-zA-Z0-9_]+|font-(sans|serif|mono)/g, ' ');
+
+        // 2. Add 'custom-font' class to main wrapper if not present
+        if (!updated.includes('custom-font')) {
+            updated = updated.replace(/className="([^"]*)"/, `className="$1 custom-font"`);
+        }
+
+        // 3. Inject CSS for .custom-font and Google Fonts Link
+        // We will remove old <style> and <link> tags related to fonts first
+        updated = updated.replace(/<link[^>]+fonts\.googleapis\.com[^>]+>\s*/g, '');
+        updated = updated.replace(/<style id="custom-font-style">[\s\S]*?<\/style>\s*/g, '');
+
+        const fontCss = `
+      <link href="${fontUrl || ''}" rel="stylesheet" />
+      <style id="custom-font-style">{\`
+        .custom-font { font-family: '${fontName}', sans-serif !important; }
+      \`}</style>`;
+
+        // Inject new tags at the start of the return statement
+        const openTagMatch = updated.match(/return\s*\(\s*(<[a-zA-Z0-9]+|<>)/);
+        if (openTagMatch) {
+            updated = updated.replace(/(return\s*\(\s*<[^>]+>)/, `$1\n${fontCss}`);
+        }
+
         updateCode(updated);
     };
 
@@ -147,54 +256,99 @@ export default function CustomizePage() {
     };
 
     // --- Content Helpers ---
-    const handleTextChange = (originalValue: string, newValue: string) => {
-        const escapedOrig = originalValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`>${escapedOrig}<`, 'g');
-        const updated = code.replace(regex, `>${newValue}<`);
+    const handleTextChange = (originalRawValue: string, newValue: string) => {
+        if (!originalRawValue) return; // Guard against stale state
+        // We use the raw captured value to find the exact spot in the code
+        // originalRawValue includes the whitespace surrounding the text in the code
+        // e.g. code is <h1>  Hello  </h1>, matched "  Hello  "
+        // We replace "  Hello  " with "  newValue  " (or just newValue if we want to trim, but safer is preserving space context if it was markup)
+        // Actually, user wants "newValue". If they typed it, they probably want that exact string.
+
+        let updated = code;
+
+        // Escape special regex chars in the raw value to find it strictly
+        const escaped = originalRawValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Match strict occurence >rawValue<
+        const regex = new RegExp(`>${escaped}<`, 'g');
+
+        if (regex.test(updated)) {
+            updated = updated.replace(regex, `>${newValue}<`);
+            updateCode(updated);
+        } else {
+            console.warn("Could not find text to replace:", originalRawValue);
+            // Fallback: try finding it with trimmed whitespace flexibility if exact match failed logic?
+            // But extraction logic guarantees we found it. The only risk is if multiple identical texts exist, ALL replace.
+        }
+    };
+
+    // --- Shadow & Animation Helpers ---
+    const applyShadow = (shadowSize: string) => {
+        const updated = code.replace(/shadow-(sm|md|lg|xl|2xl|inner|none)/g, `shadow-${shadowSize}`);
+        updateCode(updated);
+    };
+
+    const applyAnimation = (animateClass: string) => {
+        // Naive replace/append
+        let updated = code;
+        if (!updated.includes(animateClass)) {
+            updated = updated.replace(/className="([^"]*)"/, `className="$1 ${animateClass}"`);
+        }
         updateCode(updated);
     };
 
     // --- Image Helpers ---
     const handleImageReplace = (newUrl: string) => {
+        // Case A: User selected a specific image to replace
+        if (selectedImage) {
+            updateCode(code.replaceAll(selectedImage, newUrl));
+            setSelectedImage(newUrl);
+            return;
+        }
+
+        // Case B: No image selected
+        // B1: Only 1 image total -> Auto-replace
+        if (detectedImages.length === 1) {
+            updateCode(code.replaceAll(detectedImages[0], newUrl));
+            setSelectedImage(newUrl);
+            return;
+        }
+
+        // B2: Multiple images -> Force selection
+        if (detectedImages.length > 1) {
+            alert("Please select which image to replace from the 'Active Images' list above.");
+            return;
+        }
+
+        // Case C: No detected images (Fallback)
+        // Try global replace of likely detected patterns that might have been missed or direct injection
         let updated = code;
         let changed = false;
 
-        // 1. Replace existing image URLs in src attributes
-        const srcRegex = /src="https:\/\/[^"]+\.(jpg|jpeg|png|gif|webp|svg)"/gi;
-        if (srcRegex.test(updated)) {
-            updated = updated.replace(srcRegex, `src="${newUrl}"`);
-            changed = true;
-        }
-
-        // 2. Replace Unsplash URLs specifically
+        // Try replacing first src
         if (!changed) {
-            const unsplashRegex = /https:\/\/images\.unsplash\.com\/[^\s"']+/g;
-            if (unsplashRegex.test(updated)) {
-                updated = updated.replace(unsplashRegex, newUrl);
+            const srcRegex = /src="([^"]+)"/i;
+            if (srcRegex.test(updated)) {
+                updated = updated.replace(srcRegex, `src="${newUrl}"`);
                 changed = true;
             }
         }
 
-        // 3. Replace background gradients with inline style (for hero sections)
+        // Try replacing hero background
         if (!changed) {
-            // Look for divs with gradient backgrounds
-            const gradientRegex = /(<div[^>]*className="[^"]*)(bg-gradient-to-[a-z]+\s+from-[^\s"]+\s+(?:via-[^\s"]+\s+)?to-[^\s"]+)([^"]*"[^>]*)(>)/g;
-            if (gradientRegex.test(updated)) {
-                updated = updated.replace(gradientRegex, (match, before, gradient, after, close) => {
-                    // Remove the gradient classes and add inline style
-                    const cleanedClasses = before + after.replace(gradient, '').trim();
-                    return `${cleanedClasses} style={{ backgroundImage: "url('${newUrl}')", backgroundSize: 'cover', backgroundPosition: 'center' }}${close}`;
-                });
+            const bgMatch = /url\(['"]?([^'"\)]+)['"]?\)/i;
+            if (bgMatch.test(updated)) {
+                updated = updated.replace(bgMatch, `url('${newUrl}')`);
                 changed = true;
             }
         }
 
-        // 4. Fallback: replace first img tag if nothing else worked
-        if (!changed) {
-            updated = updated.replace(/<img[^>]+src="([^"]+)"/, (match, oldSrc) => match.replace(oldSrc, newUrl));
+        if (changed) {
+            updateCode(updated);
+            // Re-run detection will update list
+        } else {
+            alert("Could not find a suitable image location to replace. Try adding an image node first.");
         }
-
-        updateCode(updated);
     };
 
     const handleImageSearch = async () => {
@@ -269,8 +423,7 @@ export default function CustomizePage() {
                                     </div>
 
                                     {/* Colors */}
-                                    <section>
-                                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 block">Color Palette</label>
+                                    <CollapsibleSection title="Color Palette" defaultOpen={false}>
                                         <div className="grid grid-cols-6 gap-2">
                                             {[
                                                 { name: 'slate', class: 'bg-slate-500 hover:ring-slate-400' },
@@ -299,34 +452,28 @@ export default function CustomizePage() {
                                                 />
                                             ))}
                                         </div>
-                                    </section>
+                                    </CollapsibleSection>
 
-                                    <hr className="border-dashed border-gray-100" />
+                                    <hr className="border-dashed border-gray-100 mb-6" />
 
-                                    {/* Typography */}
-                                    <section>
-                                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 block">Typography</label>
-                                        <div className="space-y-2">
-                                            {[
-                                                { id: 'font-sans', name: 'Inter', type: 'Sans Serif' },
-                                                { id: 'font-serif', name: 'Merriweather', type: 'Serif' },
-                                                { id: 'font-mono', name: 'JetBrains Mono', type: 'Monospace' },
-                                            ].map((font) => (
+                                    {/* Typography Dropdown */}
+                                    <CollapsibleSection title="Typography" defaultOpen={false}>
+                                        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {EDITOR_FONTS.map((font) => (
                                                 <button
-                                                    key={font.id}
-                                                    onClick={() => applyFont(font.id)}
-                                                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-gray-200 bg-white hover:border-indigo-400 hover:ring-1 hover:ring-indigo-400/20 transition-all group active:bg-slate-50"
+                                                    key={font.name}
+                                                    onClick={() => applyFont(font.name, font.value, font.url)}
+                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-transparent hover:bg-slate-50 hover:border-gray-200 transition-all group"
                                                 >
-                                                    <span className={`text-sm text-slate-700 ${font.id}`}>{font.name}</span>
+                                                    <span className="text-sm text-slate-700">{font.name}</span>
                                                     <span className="text-[10px] text-slate-400 group-hover:text-indigo-500 font-medium">{font.type}</span>
                                                 </button>
                                             ))}
                                         </div>
-                                    </section>
+                                    </CollapsibleSection>
 
                                     {/* Radius */}
-                                    <section>
-                                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 block">Border Radius</label>
+                                    <CollapsibleSection title="Border Radius" defaultOpen={true}>
                                         <div className="flex bg-slate-100 p-1 rounded-lg">
                                             {[
                                                 { id: 'none', label: 'Square' },
@@ -342,7 +489,44 @@ export default function CustomizePage() {
                                                 </button>
                                             ))}
                                         </div>
-                                    </section>
+                                    </CollapsibleSection>
+
+                                    {/* Shadows */}
+                                    <CollapsibleSection title="Shadows" defaultOpen={false}>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['none', 'sm', 'md', 'lg', 'xl', '2xl'].map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => applyShadow(s)}
+                                                    className={`py-2 px-2 text-xs border rounded transition-all hover:bg-slate-50 ${s === 'none' ? 'border-gray-200 text-slate-400' : 'border-gray-200 text-slate-600'}`}
+                                                    style={{ boxShadow: s === 'none' ? 'none' : `var(--tw-shadow-${s === 'sm' ? '' : s})` }} // Simplified visual hint
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </CollapsibleSection>
+
+                                    {/* Animations */}
+                                    <CollapsibleSection title="Animations" defaultOpen={false}>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { id: 'animate-in fade-in duration-700', label: 'Fade In' },
+                                                { id: 'animate-in slide-in-from-bottom-4 duration-700', label: 'Slide Up' },
+                                                { id: 'animate-in slide-in-from-left-4 duration-700', label: 'Slide Right' },
+                                                { id: 'animate-in zoom-in duration-500', label: 'Zoom In' },
+                                            ].map((anim) => (
+                                                <button
+                                                    key={anim.id}
+                                                    onClick={() => applyAnimation(anim.id)}
+                                                    className="py-2 px-3 text-xs border border-gray-200 rounded text-slate-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+                                                >
+                                                    {anim.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </CollapsibleSection>
+
                                 </div>
                             )}
 
@@ -368,7 +552,7 @@ export default function CustomizePage() {
                                                     <input
                                                         type="text"
                                                         defaultValue={field.value}
-                                                        onBlur={(e) => handleTextChange(field.value, e.target.value)}
+                                                        onBlur={(e) => handleTextChange(field.rawValue || field.value, e.target.value)}
                                                         className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm transition-all placeholder:text-slate-300"
                                                         placeholder="Enter content..."
                                                     />
@@ -382,65 +566,81 @@ export default function CustomizePage() {
                             {/* --- IMAGES PANEL --- */}
                             {activeTab === 'images' && (
                                 <div className="space-y-6 animate-in slide-in-from-left-2 duration-200">
+
+                                    {/* --- Active Images Selector --- */}
+                                    {detectedImages.length > 0 && (
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Select Image to Replace</h2>
+                                            </div>
+                                            <div className="grid grid-cols-4 gap-2 mb-6">
+                                                {detectedImages.map((url, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setSelectedImage(url)}
+                                                        className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${selectedImage === url
+                                                            ? 'border-indigo-600 ring-2 ring-indigo-200'
+                                                            : 'border-transparent hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        <img
+                                                            src={url}
+                                                            alt={`Active ${i}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                        {selectedImage === url && (
+                                                            <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
+                                                                <Check className="w-4 h-4 text-white drop-shadow-md" />
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="h-px bg-gray-100 my-4" />
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center justify-between mb-2">
-                                        <h2 className="text-sm font-bold text-slate-900">Media Library</h2>
+                                        <h2 className="text-sm font-bold text-slate-900">Media Library ({MEDIA_LIBRARY.length}+)</h2>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            // Gradients & Abstract
-                                            { url: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80", label: "Gradient" },
-                                            { url: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=1200&q=80", label: "Dark Wave" },
+                                    {/* Local Search Input */}
+                                    <div className="relative mb-2">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search library (e.g., 'office', 'nature')..."
+                                            value={localSearchQuery}
+                                            onChange={(e) => setLocalSearchQuery(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder:text-slate-400"
+                                        />
+                                    </div>
 
-                                            // Business & Office
-                                            { url: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80", label: "Office" },
-                                            { url: "https://images.unsplash.com/photo-1664575602276-acd073f104c1?auto=format&fit=crop&w=1200&q=80", label: "Meeting" },
-
-                                            // Tech & Code
-                                            { url: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80", label: "Code" },
-                                            { url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80", label: "Tech" },
-
-                                            // Architecture & Buildings
-                                            { url: "https://images.unsplash.com/photo-1479839672679-a46483c0e7c8?auto=format&fit=crop&w=1200&q=80", label: "Building" },
-                                            { url: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80", label: "Skyline" },
-
-                                            // Nature & Landscape
-                                            { url: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1200&q=80", label: "Nature" },
-                                            { url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80", label: "Mountain" },
-
-                                            // Products
-                                            { url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80", label: "Shoe" },
-                                            { url: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80", label: "Phone" },
-
-                                            // Data & Analytics
-                                            { url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80", label: "Charts" },
-                                            { url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80", label: "Analytics" },
-
-                                            // Minimal & Clean
-                                            { url: "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=1200&q=80", label: "Minimal" },
-                                            { url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80", label: "Abstract" },
-
-                                            // People & Team
-                                            { url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80", label: "Team" },
-                                            { url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80", label: "Portrait" }
-                                        ].map((img, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => handleImageReplace(img.url)}
-                                                className="group relative aspect-video rounded-lg overflow-hidden bg-slate-100 ring-1 ring-black/5 hover:ring-2 hover:ring-indigo-500 transition-all hover:shadow-lg"
-                                            >
-                                                <img src={img.url} alt={img.label} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                                                    <span className="text-xs font-bold text-white tracking-wide bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/30 shadow-sm">
-                                                        Use Image
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        ))}
+                                    <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                                        {MEDIA_LIBRARY
+                                            .filter(img =>
+                                                !localSearchQuery ||
+                                                img.label.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+                                                img.tags.some(t => t.toLowerCase().includes(localSearchQuery.toLowerCase()))
+                                            )
+                                            .map((img, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => handleImageReplace(img.url)}
+                                                    className="group relative aspect-video rounded-lg overflow-hidden bg-slate-100 ring-1 ring-black/5 hover:ring-2 hover:ring-indigo-500 transition-all hover:shadow-lg"
+                                                >
+                                                    <img src={img.url} alt={img.label} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                                                        <span className="text-xs font-bold text-white tracking-wide bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/30 shadow-sm">
+                                                            Use Image
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            ))}
                                     </div>
 
                                     <div className="bg-slate-50 p-4 rounded-xl border border-dashed border-gray-200">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Custom URL or Search</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Custom URL or Ask AI</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
@@ -487,23 +687,34 @@ export default function CustomizePage() {
 
                                     <div className="flex-1 bg-gradient-to-b from-indigo-50/50 to-white border border-indigo-50 rounded-xl p-4 flex flex-col">
                                         <p className="text-xs text-indigo-900/60 font-medium mb-auto leading-relaxed">
-                                            Describe any change you want to make. The AI understands layout, style, and content.
+                                            {isLoadingSuggestions
+                                                ? "Analyzing your code for improvements..."
+                                                : "AI-powered suggestions based on your current design."}
                                         </p>
 
                                         <div className="space-y-3 mt-4">
-                                            {[
-                                                "Make it dark mode",
-                                                "Add a contact form",
-                                                "Make buttons pill shaped"
-                                            ].map((suggestion, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => setPrompt(suggestion)}
-                                                    className="w-full text-left px-3 py-2 text-[11px] text-indigo-600 bg-white border border-indigo-100 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all"
-                                                >
-                                                    ✨ "{suggestion}"
-                                                </button>
-                                            ))}
+                                            {isLoadingSuggestions ? (
+                                                <div className="space-y-2">
+                                                    {[1, 2, 3].map(i => (
+                                                        <div key={i} className="h-8 bg-indigo-100/50 rounded-lg animate-pulse" />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                (aiSuggestions.length > 0 ? aiSuggestions : [
+                                                    "Make it dark mode",
+                                                    "Add a contact form",
+                                                    "Make buttons pill shaped"
+                                                ]).map((suggestion, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setPrompt(suggestion)}
+                                                        className="w-full text-left px-3 py-2 text-[11px] text-indigo-600 bg-white border border-indigo-100 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all flex items-center gap-2"
+                                                    >
+                                                        <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                        <span className="truncate">{suggestion}</span>
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
 
