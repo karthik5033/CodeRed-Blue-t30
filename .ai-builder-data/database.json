@@ -308,6 +308,113 @@
         }
       ],
       "rows": []
+    },
+    "products": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY"
+        },
+        {
+          "name": "name",
+          "type": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "TEXT"
+        },
+        {
+          "name": "price",
+          "type": "REAL"
+        },
+        {
+          "name": "image_query",
+          "type": "TEXT"
+        }
+      ],
+      "rows": [
+        {
+          "id": 1,
+          "name": "Laptop",
+          "description": "Powerful laptop for work and play",
+          "price": 1200,
+          "image_query": "laptop",
+          "created_at": "2025-12-11T18:13:40.412Z"
+        },
+        {
+          "id": 2,
+          "name": "Smartphone",
+          "description": "The latest smartphone technology",
+          "price": 800,
+          "image_query": "smartphone",
+          "created_at": "2025-12-11T18:13:40.452Z"
+        },
+        {
+          "id": 3,
+          "name": "Headphones",
+          "description": "Noise-cancelling headphones for immersive audio",
+          "price": 200,
+          "image_query": "headphones",
+          "created_at": "2025-12-11T18:13:40.552Z"
+        },
+        {
+          "id": 4,
+          "name": "Smartwatch",
+          "description": "Track your fitness and stay connected",
+          "price": 300,
+          "image_query": "smartwatch",
+          "created_at": "2025-12-11T18:13:40.625Z"
+        },
+        {
+          "id": 5,
+          "name": "Tablet",
+          "description": "Portable tablet for entertainment",
+          "price": 400,
+          "image_query": "tablet",
+          "created_at": "2025-12-11T18:13:40.658Z"
+        }
+      ]
+    },
+    "cart": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY"
+        },
+        {
+          "name": "product_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "quantity",
+          "type": "INTEGER"
+        }
+      ],
+      "rows": []
+    },
+    "comments": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY"
+        },
+        {
+          "name": "postId",
+          "type": "INTEGER"
+        },
+        {
+          "name": "userId",
+          "type": "INTEGER"
+        },
+        {
+          "name": "text",
+          "type": "TEXT"
+        }
+      ],
+      "rows": []
     }
   }
 }

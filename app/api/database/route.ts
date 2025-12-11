@@ -27,6 +27,16 @@ export async function GET(request: NextRequest) {
                 const data = db.getAll(table, limit);
                 return NextResponse.json(data);
 
+            case 'count':
+                if (!table) {
+                    return NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 });
+                }
+                const countData = db.getAll(table);
+                if (countData.success) {
+                    return NextResponse.json({ success: true, count: countData.data?.length || 0 });
+                }
+                return NextResponse.json(countData);
+
             default:
                 return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
         }

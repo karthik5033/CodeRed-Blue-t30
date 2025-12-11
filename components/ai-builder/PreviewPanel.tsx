@@ -71,7 +71,6 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
   ${cssFile ? `<style>${cssFile.content}</style>` : ''}
 </head>
 <body>
-${htmlContent}
 <script>
 // API Proxy for iframe - enables database calls
 if (!window.__API_PROXY_INSTALLED__) {
@@ -91,6 +90,7 @@ if (!window.__API_PROXY_INSTALLED__) {
   };
 }
 </script>
+${htmlContent}
 ${jsFile ? `<script>${jsFile.content}</script>` : ''}
 </body>
 </html>`;
@@ -157,6 +157,11 @@ if (!window.__API_PROXY_INSTALLED__) {
             }
         }
     }, [files, key, activeHtmlIndex, htmlFiles, cssFile, jsFile]);
+
+    // Reset lastContentRef when key changes (iframe refresh)
+    useEffect(() => {
+        lastContentRef.current = '';
+    }, [key]);
 
     // Handle selection mode
     useEffect(() => {
@@ -304,12 +309,12 @@ if (!window.__API_PROXY_INSTALLED__) {
                         <div className="flex-1 flex justify-center">
                             <div
                                 className={`${viewportSizes[viewport]} ${viewport === 'fullscreen' ? '' : 'max-w-full'
-                                    } bg-white dark:bg-neutral-950 shadow-2xl transition-all duration-300`}
+                                    } h-full bg-white dark:bg-neutral-950 shadow-2xl transition-all duration-300`}
                             >
                                 <iframe
                                     ref={iframeRef}
                                     key={key}
-                                    className="w-full h-full min-h-[600px]"
+                                    className="w-full h-full"
                                     sandbox="allow-scripts allow-same-origin"
                                     title="Preview"
                                 />
