@@ -11,7 +11,12 @@ function showPage(pageName) {
     
     const targetPage = document.getElementById(pageName + '-page');
     if (targetPage) {
-        targetPage.style.display = 'block';
+        // Check if the page uses flex layout (auth pages)
+        if (targetPage.classList.contains('flex')) {
+            targetPage.style.display = 'flex';
+        } else {
+            targetPage.style.display = 'block';
+        }
     }
     
     window.location.hash = pageName;
@@ -211,11 +216,45 @@ export const SYSTEM_PROMPT = `You are an expert full-stack web developer. Genera
 2. **Backend**: Express.js with actual working routes
 3. **Database**: Local SQLite (no connection string needed)
 4. **API Calls**: Frontend MUST call backend APIs
-5. **Images**: YOU MUST using the Pexels API proxy for ALL images. Endpoint: \`/api/pexels-image?q={search_term}\`. Example: \`<img src="/api/pexels-image?q=office" alt="Office" />\`. Do NOT use placeholders.
+5. **Images**: YOU MUST use the Unsplash API proxy for ALL images. 
+
+   **CRITICAL IMAGE RULES:**
+   - Endpoint format: \`/api/unsplash-image?query={search_term}\`
+   - Image URLs must ALWAYS be hardcoded strings, NEVER variables
+   - Example: \`<img src="/api/unsplash-image?query=laptop" alt="Laptop" />\`
+   - For product images: \`/api/unsplash-image?query=laptop&width=400&height=400\`
+   - For hero images: \`/api/unsplash-image?query=technology&width=1200&height=600\`
+   - Do NOT use: \`<img src="\${imageUrl}" ...>\` or any JavaScript variables
+   - Do NOT construct URLs dynamically in JavaScript
+   - Do NOT use placeholders like "undefined" or empty strings
 
 ## MULTI-PAGE APPS - SINGLE HTML FILE:
 
 For apps with multiple pages (landing, login, signup, dashboard), generate ONE HTML file with multiple page sections:
+
+### ⚠️ AUTH PAGE STRUCTURE - CRITICAL:
+
+**ALL login and signup pages MUST be centered using this EXACT structure:**
+
+\`\`\`html
+<div id="login-page" class="page min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500" style="display:none">
+  <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+    <!-- Form content here -->
+  </div>
+</div>
+\`\`\`
+
+**Required classes for auth pages:**
+- Parent div: \`min-h-screen flex items-center justify-center\` + gradient background
+- Form container: \`max-w-md w-full bg-white rounded-2xl shadow-2xl p-8\`
+
+**DO NOT:**
+- ❌ Put form on one side with gradient on the other
+- ❌ Use grid layouts for auth pages
+- ❌ Skip the centering flexbox classes
+- ❌ Make the white container full-width
+
+### Multi-Page Example:
 
 \`\`\`html
 <body>
@@ -223,7 +262,15 @@ For apps with multiple pages (landing, login, signup, dashboard), generate ONE H
   <script>
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-      document.getElementById(pageId + '-page').style.display = 'block';
+      const targetPage = document.getElementById(pageId + '-page');
+      if (targetPage) {
+        // Check if the page uses flex layout (auth pages)
+        if (targetPage.classList.contains('flex')) {
+          targetPage.style.display = 'flex';
+        } else {
+          targetPage.style.display = 'block';
+        }
+      }
       // If navigating to dashboard, check auth
       if (pageId === 'dashboard' && !localStorage.getItem('user')) {
         showPage('login');
@@ -242,37 +289,37 @@ For apps with multiple pages (landing, login, signup, dashboard), generate ONE H
     <nav>...</nav>
     <header class="hero">
         <!-- USE REAL IMAGES -->
-        <img src="/api/pexels-image?q=technology" class="hero-bg" />
+        <img src="/api/unsplash-image?query=technology" class="hero-bg" />
         <h1>Welcome</h1>
     </header>
     <button onclick="showPage('login')">Login</button>
   </div>
 
   <!-- Login Page -->
-  <div id="login-page" class="page" style="display:none">
-    <div class="auth-container">
-        <h2>Login</h2>
+  <div id="login-page" class="page min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500" style="display:none">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+        <h2 class="text-2xl font-bold mb-6">Login</h2>
         <!-- Forms must be visible and styled -->
         <form onsubmit="handleLogin(event)">
-            <input id="login-email" type="email" placeholder="Email" required />
-            <input id="login-password" type="password" placeholder="Password" required />
-            <button type="submit">Login</button>
+            <input id="login-email" type="email" placeholder="Email" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" required />
+            <input id="login-password" type="password" placeholder="Password" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" required />
+            <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">Login</button>
         </form>
-        <p>Don't have an account? <a href="#" onclick="showPage('signup')">Sign up</a></p>
+        <p class="mt-4 text-center text-sm">Don't have an account? <a href="#" onclick="showPage('signup')" class="text-purple-600 font-semibold">Sign up</a></p>
     </div>
   </div>
 
   <!-- Signup Page -->
-  <div id="signup-page" class="page" style="display:none">
-     <div class="auth-container">
-        <h2>Create Account</h2>
+  <div id="signup-page" class="page min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500" style="display:none">
+     <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+        <h2 class="text-2xl font-bold mb-6">Create Account</h2>
         <form onsubmit="handleSignup(event)">
-            <input id="signup-name" type="text" placeholder="Full Name" required />
-            <input id="signup-email" type="email" placeholder="Email" required />
-            <input id="signup-password" type="password" placeholder="Create Password" required />
-            <button type="submit">Sign Up</button>
+            <input id="signup-name" type="text" placeholder="Full Name" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" required />
+            <input id="signup-email" type="email" placeholder="Email" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" required />
+            <input id="signup-password" type="password" placeholder="Create Password" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" required />
+            <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">Sign Up</button>
         </form>
-        <p>Allowed? <a href="#" onclick="showPage('login')">Login</a></p>
+        <p class="mt-4 text-center text-sm">Already have an account? <a href="#" onclick="showPage('login')" class="text-purple-600 font-semibold">Login</a></p>
     </div>
   </div>
 </body>
@@ -514,22 +561,26 @@ CRITICAL: Generate a SINGLE HTML file with ALL pages as separate divs:
     </div>
 
     <!-- Page 2: Login -->
-    <div id="login-page" class="page" style="display:none">
-        <h2>Login</h2>
-        <input id="login-email" type="email" placeholder="Email" />
-        <input id="login-password" type="password" placeholder="Password" />
-        <button onclick="handleLogin()">Login</button>
-        <a href="#" onclick="showPage('signup')">Sign Up</a>
+    <div id="login-page" class="page min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500" style="display:none">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-bold mb-6">Login</h2>
+            <input id="login-email" type="email" placeholder="Email" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" />
+            <input id="login-password" type="password" placeholder="Password" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" />
+            <button onclick="handleLogin()" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">Login</button>
+            <p class="mt-4 text-center text-sm"><a href="#" onclick="showPage('signup')" class="text-purple-600 font-semibold">Sign Up</a></p>
+        </div>
     </div>
 
     <!-- Page 3: Signup -->
-    <div id="signup-page" class="page" style="display:none">
-        <h2>Sign Up</h2>
-        <input id="signup-name" type="text" placeholder="Name" />
-        <input id="signup-email" type="email" placeholder="Email" />
-        <input id="signup-password" type="password" placeholder="Password" />
-        <button onclick="handleSignup()">Sign Up</button>
-        <a href="#" onclick="showPage('login')">Login</a>
+    <div id="signup-page" class="page min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500" style="display:none">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-bold mb-6">Sign Up</h2>
+            <input id="signup-name" type="text" placeholder="Name" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" />
+            <input id="signup-email" type="email" placeholder="Email" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" />
+            <input id="signup-password" type="password" placeholder="Password" class="w-full px-4 py-3 mb-4 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none" />
+            <button onclick="handleSignup()" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">Sign Up</button>
+            <p class="mt-4 text-center text-sm"><a href="#" onclick="showPage('login')" class="text-purple-600 font-semibold">Login</a></p>
+        </div>
     </div>
 
     <!-- Page 4: Dashboard -->

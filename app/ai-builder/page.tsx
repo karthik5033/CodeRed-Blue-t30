@@ -27,7 +27,7 @@ export default function AIBuilderPage() {
     const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
     const [activeTab, setActiveTab] = useState<ViewTab>('code');
     const [showCodePanel, setShowCodePanel] = useState(false);
-    const [codePanelHeight, setCodePanelHeight] = useState(350);
+    const [codePanelHeight, setCodePanelHeight] = useState(250);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStartY, setDragStartY] = useState(0);
     const [dragStartHeight, setDragStartHeight] = useState(0);
@@ -101,32 +101,64 @@ export default function AIBuilderPage() {
                 throw new Error('No response body');
             }
 
+            let buffer = ''; // Buffer for incomplete chunks
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                // Decode and add to buffer
+                buffer += decoder.decode(value, { stream: true });
+
+                // Split by newlines but keep incomplete lines in buffer
+                const lines = buffer.split('\n');
+
+                // Keep the last potentially incomplete line in the buffer
+                buffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = JSON.parse(line.slice(6));
+                        try {
+                            const data = JSON.parse(line.slice(6));
 
-                        if (data.error) {
-                            throw new Error(data.error);
-                        }
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
 
-                        if (data.done && data.files) {
-                            setGeneratedFiles(data.files);
-                            if (data.structure) {
-                                setProjectStructure(data.structure);
+                            if (data.done && data.files) {
+                                setGeneratedFiles(data.files);
+                                if (data.structure) {
+                                    setProjectStructure(data.structure);
+                                }
+                                if (data.database) {
+                                    setDatabaseSchema(data.database);
+                                    // Keep code tab active, don't auto-switch
+                                }
                             }
-                            if (data.database) {
-                                setDatabaseSchema(data.database);
-                                // Keep code tab active, don't auto-switch
-                            }
+                        } catch (parseError) {
+                            // Skip malformed JSON chunks during streaming
+                            console.warn('Skipping malformed JSON chunk:', parseError);
+                            continue;
                         }
                     }
+                }
+            }
+
+            // Process any remaining buffer content
+            if (buffer.trim() && buffer.startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(buffer.slice(6));
+                    if (data.done && data.files) {
+                        setGeneratedFiles(data.files);
+                        if (data.structure) {
+                            setProjectStructure(data.structure);
+                        }
+                        if (data.database) {
+                            setDatabaseSchema(data.database);
+                        }
+                    }
+                } catch (parseError) {
+                    console.warn('Skipping final buffer chunk:', parseError);
                 }
             }
         } catch (err) {
@@ -415,7 +447,7 @@ export default function AIBuilderPage() {
                                             setActiveTab('code');
                                         } else {
                                             // Reset height when hiding
-                                            setCodePanelHeight(350);
+                                            setCodePanelHeight(250);
                                         }
                                     }}
                                     size="sm"
