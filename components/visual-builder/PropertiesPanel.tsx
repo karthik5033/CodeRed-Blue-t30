@@ -275,7 +275,6 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                                 value={element.size.width}
                                 onChange={e => updateSize('width', e.target.value)}
                                 onKeyDown={e => e.stopPropagation()}
-                                onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
                                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 placeholder="auto"
                             />
@@ -287,7 +286,6 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                                 value={element.size.height}
                                 onChange={e => updateSize('height', e.target.value)}
                                 onKeyDown={e => e.stopPropagation()}
-                                onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
                                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 placeholder="auto"
                             />
@@ -304,7 +302,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.fontSize || ''}
                             onChange={e => updateStyle('fontSize', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="16px"
                         />
@@ -339,7 +337,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                                 value={element.styles.color || '#000000'}
                                 onChange={e => updateStyle('color', e.target.value)}
                                 onKeyDown={e => e.stopPropagation()}
-                                onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                                
                                 className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 placeholder="#000000"
                             />
@@ -363,7 +361,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                                 value={element.styles.backgroundColor || '#ffffff'}
                                 onChange={e => updateStyle('backgroundColor', e.target.value)}
                                 onKeyDown={e => e.stopPropagation()}
-                                onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                                
                                 className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 placeholder="#ffffff"
                             />
@@ -380,7 +378,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.padding || ''}
                             onChange={e => updateStyle('padding', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="20px"
                         />
@@ -392,7 +390,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.margin || ''}
                             onChange={e => updateStyle('margin', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="0"
                         />
@@ -408,7 +406,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.borderRadius || ''}
                             onChange={e => updateStyle('borderRadius', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="0px"
                         />
@@ -420,7 +418,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.border || ''}
                             onChange={e => updateStyle('border', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="1px solid #000"
                         />
@@ -436,7 +434,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
                             value={element.styles.boxShadow || ''}
                             onChange={e => updateStyle('boxShadow', e.target.value)}
                             onKeyDown={e => e.stopPropagation()}
-                            onFocus={e => e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })}
+                            
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="0 2px 4px rgba(0,0,0,0.1)"
                         />
@@ -482,7 +480,7 @@ export function PropertiesPanel({ element, onUpdateElement }: PropertiesPanelPro
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50" style={{ scrollBehavior: 'auto' }}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50" style={{ scrollBehavior: 'auto', overflowAnchor: 'none' }}>
                 {activeTab === 'properties' && (
                     <>
                         {renderPropertyFields()}
