@@ -16,42 +16,42 @@ const features = [
     icon: Lightbulb,
     description:
       "Built for entrepreneurs who think in business logic, not code. Turn flowcharts into apps without learning to code or paying for expensive developers.",
-    href: "/how",
+    href: "/market-gap",
   },
   {
     title: "Pricing That Makes Sense",
     icon: DollarSign,
     description:
       "Free forever with open-source models. No monthly subscriptions, no per-generation fees. Compare us to ChatGPT Pro or Cursor AI and save thousands.",
-    href: "/features",
+    href: "/pricing",
   },
   {
     title: "Complete Documentation",
     icon: BookOpen,
     description:
       "Step-by-step guides, video tutorials, and examples. Everything you need to go from idea to deployed app.",
-    href: "/docs",
+    href: "/documentation",
   },
   {
     title: "Hand-Holding Tutorial",
     icon: GraduationCap,
     description:
       "Never built an app before? Our interactive walkthrough guides you through every single step — from your first flowchart to your first deployment.",
-    href: "/how",
+    href: "/tutorial",
   },
   {
     title: "Ready-Made Templates",
     icon: LayoutTemplate,
     description:
       "Start with pre-built flowchart templates for e-commerce, SaaS, dashboards, and more. Customize them to match your exact business needs.",
-    href: "/builder",
+    href: "/templates",
   },
   {
     title: "Flowchart to Production Code",
     icon: GitBranch,
     description:
       "Watch your business logic transform into clean, production-ready code. Frontend, backend, database, and APIs — all generated automatically.",
-    href: "/builder",
+    href: "/code-generation",
   },
 ];
 
@@ -80,14 +80,14 @@ export default function Features() {
                 href={item.href}
                 className="
                                     group p-10 flex flex-col gap-3 
-                                    hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all
+                                    hover:bg-slate-100 dark:hover:bg-slate-700 transition-all
                                     hover:cursor-pointer 
                                     hover:shadow-lg 
                                     duration-200
                                 "
               >
                 <div className="flex items-center gap-2">
-                  <Icon className="size-5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition" />
+                  <Icon className="size-5 text-slate-700 dark:text-slate-300 group-hover:scale-110 transition" />
                   <h3 className="text-base font-semibold">{item.title}</h3>
                 </div>
 

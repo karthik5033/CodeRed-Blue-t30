@@ -135,11 +135,11 @@ export const HeroHeader = () => {
                       showFeatures
                         ? { opacity: 1, scale: 1, y: 0, pointerEvents: "auto" }
                         : {
-                            opacity: 0,
-                            scale: 0.98,
-                            y: -6,
-                            pointerEvents: "none",
-                          }
+                          opacity: 0,
+                          scale: 0.98,
+                          y: -6,
+                          pointerEvents: "none",
+                        }
                     }
                     transition={{ duration: 0.14 }}
                     className="absolute left-0 mt-3 w-[520px] rounded-2xl bg-white/95 text-slate-900 shadow-lg border border-white/10 p-4 transition-all will-change-transform"
@@ -160,73 +160,73 @@ export const HeroHeader = () => {
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <a
-                        href="#features"
+                        href="/market-gap"
                         className="group block rounded-lg p-3 hover:bg-zinc-50"
                       >
                         <div className="font-semibold">
-                          Lightning Fast App Generation
+                          Why Use AvatarFlow?
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Generate full-stack apps from a visual flow.
+                          Market gap analysis, ROI, and cost savings.
                         </div>
                       </a>
 
                       <a
-                        href="/ai-logic"
+                        href="/pricing"
                         className="group block rounded-lg p-3 hover:bg-zinc-50"
                       >
-                        <div className="font-semibold">AI-Powered Logic</div>
+                        <div className="font-semibold">Pricing That Makes Sense</div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Nodes → typed handlers & routes.
+                          Free forever vs $3k/year competitors.
                         </div>
                       </a>
 
                       <a
-                        href="/security"
+                        href="/documentation"
                         className="group block rounded-lg p-3 hover:bg-zinc-50"
                       >
-                        <div className="font-semibold">Secure & Stable</div>
+                        <div className="font-semibold">Complete Documentation</div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Validation, sandboxing, guard rails.
+                          150+ guides, videos, and examples.
                         </div>
                       </a>
 
                       <a
-                        href="/customization"
+                        href="/tutorial"
                         className="group block rounded-lg p-3 hover:bg-zinc-50"
                       >
-                        <div className="font-semibold">Fully Customizable</div>
+                        <div className="font-semibold">Hand-Holding Tutorial</div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Modify UI, schema, routes & logic.
+                          From zero to deployed in 90 minutes.
                         </div>
                       </a>
 
                       <a
-                        href="/control"
-                        className="group block rounded-lg p-3 hover:bg-zinc-50"
-                      >
-                        <div className="font-semibold">Total Control</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Inspect or edit generated code.
-                        </div>
-                      </a>
-
-                      <a
-                        href="/ai-workflows"
+                        href="/templates"
                         className="group block rounded-lg p-3 hover:bg-zinc-50"
                       >
                         <div className="font-semibold">
-                          Built for AI Workflows
+                          Ready-Made Templates
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          LLM tools, agents, dashboards & automation.
+                          85+ production-ready app templates.
+                        </div>
+                      </a>
+
+                      <a
+                        href="/code-generation"
+                        className="group block rounded-lg p-3 hover:bg-zinc-50"
+                      >
+                        <div className="font-semibold">Code Generation</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Flowchart to 12k+ lines in &lt; 10 seconds.
                         </div>
                       </a>
                     </div>
 
                     <div className="mt-3 border-t pt-3 text-right">
                       <a
-                        href="/features"
+                        href="/#features"
                         className="text-sm font-medium text-accent-foreground hover:underline"
                       >
                         View all features →
