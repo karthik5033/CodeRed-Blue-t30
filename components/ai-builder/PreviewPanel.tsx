@@ -26,8 +26,12 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
     const elementSelectorRef = useRef<ElementSelector | null>(null);
     const skipNextReloadRef = useRef(false);
     const lastContentRef = useRef<string>('');
+    const previousKeyRef = useRef<number>(0);
 
-    const refresh = () => setKey(prev => prev + 1);
+    const refresh = () => {
+        console.log('Refresh button clicked, current key:', key);
+        setKey(prev => prev + 1);
+    };
 
     // Get HTML files for multi-page navigation
     const htmlFiles = files.filter(f => f.type === 'html');
@@ -36,15 +40,34 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
 
     // Render iframe content
     useEffect(() => {
+        // Reset lastContentRef if key changed (refresh was clicked)
+        if (previousKeyRef.current !== key) {
+            console.log('Key changed from', previousKeyRef.current, 'to', key, '- resetting lastContentRef');
+            lastContentRef.current = '';
+            previousKeyRef.current = key;
+        }
+
+        console.log('=== IFRAME RENDER EFFECT ===');
+        console.log('files.length:', files.length);
+        console.log('iframeRef.current:', !!iframeRef.current);
+
         if (files.length > 0 && iframeRef.current) {
             const iframe = iframeRef.current;
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
 
+            console.log('iframeDoc exists:', !!iframeDoc);
+
             if (iframeDoc) {
                 const activeHtml = htmlFiles[activeHtmlIndex];
-                if (!activeHtml) return;
+                console.log('activeHtml:', activeHtml?.name);
+
+                if (!activeHtml) {
+                    console.warn('No active HTML file found!');
+                    return;
+                }
 
                 let htmlContent = activeHtml.content;
+                console.log('HTML content length:', htmlContent.length);
 
                 // Remove external file references that cause 404 errors
                 htmlContent = htmlContent.replace(/<link[^>]*href=["'](?:css\/)?style\.css["'][^>]*>/gi, '');
@@ -60,6 +83,7 @@ export default function PreviewPanel({ files, isLoading, isFullscreen = false, o
 
                 // If HTML doesn't have full structure, wrap it
                 if (!htmlContent.includes('<html')) {
+                    console.log('Wrapping HTML with full structure');
                     htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,6 +119,7 @@ ${jsFile ? `<script>${jsFile.content}</script>` : ''}
 </body>
 </html>`;
                 } else {
+                    console.log('HTML has full structure, injecting CSS and JS');
                     // Inject CSS and JS into existing HTML
                     if (cssFile && !htmlContent.includes(cssFile.content)) {
                         htmlContent = htmlContent.replace(
@@ -140,28 +165,36 @@ if (!window.__API_PROXY_INSTALLED__) {
 
                     // Ensure CSP is present
                     if (!htmlContent.includes('Content-Security-Policy')) {
+                        // Add CSP at the start of <head>, not in <body>
                         htmlContent = htmlContent.replace(
-                            '<head>',
-                            '<head>\n  <meta http-equiv="Content-Security-Policy" content="img-src * data: blob: \'unsafe-inline\';">'
+                            /<head[^>]*>/i,
+                            (match) => `${match}\n  <meta http-equiv="Content-Security-Policy" content="img-src * data: blob: 'unsafe-inline';">`
                         );
                     }
                 }
 
                 // Only write if content changed to prevent "already declared" errors
                 if (htmlContent !== lastContentRef.current) {
+                    console.log('Writing new content to iframe');
+                    console.log('Content comparison:', {
+                        newLength: htmlContent.length,
+                        oldLength: lastContentRef.current.length,
+                        areEqual: htmlContent === lastContentRef.current
+                    });
                     lastContentRef.current = htmlContent;
                     iframeDoc.open();
                     iframeDoc.write(htmlContent);
                     iframeDoc.close();
+                    console.log('Content written successfully');
+                } else {
+                    console.log('Content unchanged, skipping write');
+                    console.log('Both contents have length:', htmlContent.length);
                 }
             }
+        } else {
+            console.log('Skipping render - no files or no iframe ref');
         }
     }, [files, key, activeHtmlIndex, htmlFiles, cssFile, jsFile]);
-
-    // Reset lastContentRef when key changes (iframe refresh)
-    useEffect(() => {
-        lastContentRef.current = '';
-    }, [key]);
 
     // Handle selection mode
     useEffect(() => {
@@ -315,7 +348,7 @@ if (!window.__API_PROXY_INSTALLED__) {
                                     ref={iframeRef}
                                     key={key}
                                     className="w-full h-full"
-                                    sandbox="allow-scripts allow-same-origin"
+                                    sandbox="allow-scripts allow-same-origin allow-forms"
                                     title="Preview"
                                 />
                             </div>

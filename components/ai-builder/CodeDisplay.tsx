@@ -12,15 +12,17 @@ interface CodeDisplayProps {
     files: FileData[];
     structure?: ProjectStructure;
     onCodeChange?: (fileIndex: number, newContent: string) => void;
+    onExpandChange?: (isExpanded: boolean) => void;
 }
 
-export default function CodeDisplay({ files, structure, onCodeChange }: CodeDisplayProps) {
+export default function CodeDisplay({ files, structure, onCodeChange, onExpandChange }: CodeDisplayProps) {
     const [isVisible, setIsVisible] = useState(true);
     const [activeFilePath, setActiveFilePath] = useState<string>('');
     const [copiedFile, setCopiedFile] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState('');
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+    const [isExpanded, setIsExpanded] = useState(false);
 
     if (!files || files.length === 0) return null;
 
@@ -243,6 +245,21 @@ export default function CodeDisplay({ files, structure, onCodeChange }: CodeDisp
                                         title="Download all files as ZIP"
                                     >
                                         📦
+                                    </Button>
+                                )}
+                                {onExpandChange && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            const newExpanded = !isExpanded;
+                                            setIsExpanded(newExpanded);
+                                            onExpandChange(newExpanded);
+                                        }}
+                                        className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 text-white transition-all h-7 px-2"
+                                        title={isExpanded ? 'Collapse' : 'Expand'}
+                                    >
+                                        {isExpanded ? '⬇️ Collapse' : '⬆️ Expand'}
                                     </Button>
                                 )}
                             </div>
