@@ -15,6 +15,8 @@ import { generateAppBoilerplate, generateFlowFromImage } from "../../app/actions
 import { PanelResizeHandle, Panel, PanelGroup } from "react-resizable-panels";
 import { Upload } from "lucide-react";
 
+import DatabaseViewer from "../ai-builder/DatabaseViewer";
+
 /* ------------------ PALETTE COMPONENTS ------------------ */
 function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -49,6 +51,7 @@ export default function EditorShell() {
     const [pendingChatMsg, setPendingChatMsg] = useState<string | null>(null);
     const [tokenStats, setTokenStats] = useState<{ jsonSize: number; toonSize: number; savedPercent: number } | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [activeRightTab, setActiveRightTab] = useState<'preview' | 'database'>('preview');
 
     // File Input Ref
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -124,7 +127,42 @@ export default function EditorShell() {
 
     React.useEffect(() => {
         setMounted(true);
+        // Restore from LocalStorage
+        if (typeof window !== 'undefined') {
+            const savedNodes = localStorage.getItem('avtarflow_nodes');
+            const savedEdges = localStorage.getItem('avtarflow_edges');
+            const savedCode = localStorage.getItem('avtarflow_generated_code');
+
+            if (savedNodes) {
+                try {
+                    const parsedNodes = JSON.parse(savedNodes);
+                    if (Array.isArray(parsedNodes) && parsedNodes.length > 0) setNodes(parsedNodes);
+                } catch (e) { console.error("Failed to parse nodes", e); }
+            }
+            if (savedEdges) {
+                try {
+                    const parsedEdges = JSON.parse(savedEdges);
+                    if (Array.isArray(parsedEdges)) setEdges(parsedEdges);
+                } catch (e) { console.error("Failed to parse edges", e); }
+            }
+            if (savedCode) {
+                setGeneratedCode(savedCode);
+            }
+        }
     }, []);
+
+    // Auto-Save Nodes & Edges & Code
+    React.useEffect(() => {
+        if (!mounted) return;
+        const timeoutId = setTimeout(() => {
+            localStorage.setItem('avtarflow_nodes', JSON.stringify(nodes));
+            localStorage.setItem('avtarflow_edges', JSON.stringify(edges));
+            if (generatedCode) {
+                localStorage.setItem('avtarflow_generated_code', generatedCode);
+            }
+        }, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [nodes, edges, generatedCode, mounted]);
 
     /* 🔹 Handlers */
     const handleAddNode = (label: string) => {
@@ -258,13 +296,55 @@ export default function EditorShell() {
                         {isUploading ? <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-slate-700 animate-spin" /> : <Upload className="w-4 h-4" />}
                         Upload Flow
                     </button>
+                    <button
+                        onClick={() => setActiveRightTab(activeRightTab === 'preview' ? 'database' : 'preview')}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors shadow-sm ${activeRightTab === 'database'
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'text-slate-700 bg-white border-gray-200 hover:bg-gray-50'
+                            }`}
+                    >
+                        {activeRightTab === 'database' ? 'Show Preview' : 'Show Database'}
+                    </button>
                     <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                         Export
                     </button>
                     <button
                         onClick={async () => {
+                            if (!generatedCode) return;
                             try {
                                 setIsGenerating(true);
+                                setActiveRightTab('preview');
+
+                                const { editReactComponent } = await import('../../app/actions/ai');
+                                const enhancementPrompt = "Enhance the UI significantly (modern aesthetics, better shadows/spacing, glassmorphism) and ensure backend data consistency. Add 2-3 useful features (like sorting, filtering, or improved dashboard widgets) that make sense for this app type.";
+
+                                const enhancedCode = await editReactComponent(generatedCode, enhancementPrompt);
+
+                                if (enhancedCode && !enhancedCode.startsWith("// Error")) {
+                                    setGeneratedCode(enhancedCode);
+                                } else {
+                                    alert("Enhancement failed: " + enhancedCode);
+                                }
+                                setIsGenerating(false);
+                            } catch (e) {
+                                console.error(e);
+                                setIsGenerating(false);
+                                alert("Failed to enhance app.");
+                            }
+                        }}
+                        disabled={isGenerating || !generatedCode}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                        Enhance
+                    </button>
+                    <button
+                        onClick={async () => {
+                            try {
+                                setIsGenerating(true);
+                                setActiveRightTab('preview'); // Switch to preview on generate
 
                                 // TOON Logic: Convert flow to optimized string
                                 const toonData = toTOON(nodes, edges);
@@ -448,14 +528,26 @@ export default function EditorShell() {
 
                         {/* ---------------- RIGHT PREVIEW ---------------- */}
                         <Panel defaultSize={35} minSize={25} maxSize={60} className="flex flex-col bg-slate-50/50 p-6">
-                            <div className="mb-6">
-                                <h2 className="text-base font-bold text-slate-900 mb-1">Live Preview</h2>
-                                <p className="text-sm text-slate-500">Generated UI updates instantly.</p>
+                            <div className="mb-6 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-900 mb-1">
+                                        {activeRightTab === 'database' ? 'Local Database' : 'Live Preview'}
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {activeRightTab === 'database'
+                                            ? 'Inspect SQLite data'
+                                            : 'Generated UI updates instantly.'}
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full w-full">
                                 <div className="flex-1 overflow-hidden relative h-full w-full">
-                                    <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} tokenStats={tokenStats} />
+                                    {activeRightTab === 'database' ? (
+                                        <DatabaseViewer />
+                                    ) : (
+                                        <PreviewPane code={generatedCode || undefined} isGenerating={isGenerating} tokenStats={tokenStats} />
+                                    )}
                                 </div>
                             </div>
                         </Panel>

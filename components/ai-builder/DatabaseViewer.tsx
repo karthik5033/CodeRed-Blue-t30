@@ -207,56 +207,77 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
 
                 {/* Documents View */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="border-b border-neutral-200 dark:border-neutral-800 p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-semibold">
-                                {selectedTable || 'Select a table'}
-                            </span>
-                            {selectedTable && (
-                                <span className="text-xs text-neutral-500">
-                                    ({documents.length} {documents.length === 1 ? 'record' : 'records'})
+                    <div className="border-b border-neutral-200 dark:border-neutral-800 p-3 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <span className="font-mono text-sm font-semibold truncate">
+                                    {selectedTable || 'Select a table'}
                                 </span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {selectedTable && (
-                                <div className="flex gap-1 mr-2">
-                                    <Button
-                                        size="sm"
-                                        variant={viewMode === 'analysis' ? 'default' : 'outline'}
-                                        onClick={() => setViewMode('analysis')}
-                                    >
-                                        📊 Analysis
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant={viewMode === 'json' ? 'default' : 'outline'}
-                                        onClick={() => setViewMode('json')}
-                                    >
-                                        📄 JSON
-                                    </Button>
-                                </div>
-                            )}
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => selectedTable && loadDocuments(selectedTable)}
-                                disabled={isLoading || !selectedTable}
-                            >
-                                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                                Refresh
-                            </Button>
-                            {selectedTable && (
+                                {selectedTable && (
+                                    <span className="text-xs text-neutral-500 whitespace-nowrap">
+                                        ({documents.length} recs)
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1">
                                 <Button
                                     size="sm"
-                                    variant="destructive"
+                                    variant="ghost"
+                                    onClick={() => setSelectedTable('')}
+                                    title="Close Table View"
+                                    className="h-8 px-2 text-neutral-500 hover:text-neutral-900"
+                                >
+                                    ✕ Close
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => selectedTable && loadDocuments(selectedTable)}
+                                    disabled={isLoading || !selectedTable}
+                                    title="Refresh Data"
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                </Button>
+                            </div>
+                        </div>
+
+                        {selectedTable && (
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setViewMode('analysis')}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'analysis'
+                                            ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm'
+                                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
+                                            }`}
+                                    >
+                                        Analysis
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('json')}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'json'
+                                            ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm'
+                                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
+                                            }`}
+                                    >
+                                        JSON
+                                    </button>
+                                </div>
+
+                                <div className="flex-1" />
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
                                     onClick={() => deleteTable(selectedTable)}
                                     disabled={isLoading}
+                                    className="h-7 text-xs px-2 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
                                 >
-                                    🗑️ Delete Table
+                                    Delete
                                 </Button>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-auto p-4">

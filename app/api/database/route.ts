@@ -10,38 +10,38 @@ export async function GET(request: NextRequest) {
         switch (action) {
             case 'tables':
                 const tables = db.getTables();
-                return NextResponse.json(tables);
+                return cors(NextResponse.json(tables));
 
             case 'schema':
                 if (!table) {
-                    return NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 });
+                    return cors(NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 }));
                 }
                 const schema = db.getTableSchema(table);
-                return NextResponse.json(schema);
+                return cors(NextResponse.json(schema));
 
             case 'data':
                 if (!table) {
-                    return NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 });
+                    return cors(NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 }));
                 }
                 const limit = parseInt(searchParams.get('limit') || '100');
                 const data = db.getAll(table, limit);
-                return NextResponse.json(data);
+                return cors(NextResponse.json(data));
 
             case 'count':
                 if (!table) {
-                    return NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 });
+                    return cors(NextResponse.json({ success: false, error: 'Table name required' }, { status: 400 }));
                 }
                 const countData = db.getAll(table);
                 if (countData.success) {
-                    return NextResponse.json({ success: true, count: countData.data?.length || 0 });
+                    return cors(NextResponse.json({ success: true, count: countData.data?.length || 0 }));
                 }
-                return NextResponse.json(countData);
+                return cors(NextResponse.json(countData));
 
             default:
-                return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
+                return cors(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
         }
     } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return cors(NextResponse.json({ success: false, error: error.message }, { status: 500 }));
     }
 }
 
@@ -54,41 +54,61 @@ export async function POST(request: NextRequest) {
             case 'create_table':
                 const { columns } = body;
                 const result = db.createTable(table, columns);
-                return NextResponse.json(result);
+                return cors(NextResponse.json(result));
 
             case 'insert':
+                console.log('[API] Inserting into', table, data); // DEBUG
                 const insertResult = db.insert(table, data);
-                return NextResponse.json(insertResult);
+                console.log('[API] Insert result:', insertResult); // DEBUG
+                return cors(NextResponse.json(insertResult));
 
             case 'update':
                 const updateResult = db.update(table, id, data);
-                return NextResponse.json(updateResult);
+                return cors(NextResponse.json(updateResult));
 
             case 'delete':
                 const deleteResult = db.deleteRow(table, id);
-                return NextResponse.json(deleteResult);
+                return cors(NextResponse.json(deleteResult));
 
             case 'clear':
                 const clearResult = db.clearTable(table);
-                return NextResponse.json(clearResult);
+                return cors(NextResponse.json(clearResult));
 
             case 'drop':
                 const dropResult = db.dropTable(table);
-                return NextResponse.json(dropResult);
+                return cors(NextResponse.json(dropResult));
 
             case 'delete_table':
                 const deleteTableResult = db.dropTable(table);
-                return NextResponse.json(deleteTableResult);
+                return cors(NextResponse.json(deleteTableResult));
 
             case 'execute':
                 const { sql, params } = body;
                 const execResult = db.executeSQL(sql, params || []);
-                return NextResponse.json(execResult);
+                return cors(NextResponse.json(execResult));
 
             default:
-                return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
+                return cors(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
         }
     } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return cors(NextResponse.json({ success: false, error: error.message }, { status: 500 }));
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return new NextResponse(null, {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+    });
+}
+
+function cors(response: NextResponse) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return response;
 }

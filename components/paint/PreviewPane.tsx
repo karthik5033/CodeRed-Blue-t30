@@ -44,6 +44,51 @@ export default function PreviewPane({ code, isGenerating, tokenStats }: PreviewP
     setActiveCode(updated);
   };
 
+  // 🔹 SETUP BRIDGE FOR DATABASE COMMUNICATION
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Security: In production, check event.origin. For local dev, we might accept all or check if it contains 'csb.app'
+      const { type, table, data } = event.data || {};
+
+      if (type === 'AVTAR_FLOW_DB_INSERT') {
+        try {
+          console.log("[PreviewPane] Proxying DB Insert:", data);
+
+          const response = await fetch('/api/database', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'insert',
+              table: table || 'app_form_submissions',
+              data: {
+                project_id: 'default',
+                form_id: 'form_' + Date.now(),
+                data: JSON.stringify(data)
+              }
+            })
+          });
+
+          const result = await response.json();
+
+          // Send success back to iframe
+          if (response.ok && result.success) {
+            // event.source is the window that sent the message (the iframe)
+            (event.source as Window)?.postMessage({ type: 'DB_INSERT_SUCCESS', result }, '*');
+          } else {
+            (event.source as Window)?.postMessage({ type: 'DB_INSERT_ERROR', error: result.error }, '*');
+          }
+
+        } catch (error: any) {
+          console.error("[PreviewPane] Proxy Error:", error);
+          (event.source as Window)?.postMessage({ type: 'DB_INSERT_ERROR', error: error.message }, '*');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const toggleDarkMode = () => {
     // Simple toggle for preview container - app needs to support dark mode classes or we just wrap it
     // For now, let's just toggle a wrapper class if possible, or inject 'dark'

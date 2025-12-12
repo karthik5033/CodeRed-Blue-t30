@@ -5,11 +5,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement).value;
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        router.push("/dashboard");
+      } else {
+        setError(data.error || "Login failed");
+      }
+    } catch (err) {
+      setError("Failed to connect to server");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <section className="flex min-h-screen bg-zinc-50 px-4 py-16 md:py-32 dark:bg-transparent">
-      <form className="bg-card m-auto w-full max-w-sm rounded-xl border shadow-md p-0.5">
+      <form onSubmit={onSubmit} className="bg-card m-auto w-full max-w-sm rounded-xl border shadow-md p-0.5">
         <div className="p-8 pb-6">
           <Link href="/" aria-label="go home">
             <LogoIcon />
@@ -37,7 +72,7 @@ export default function LoginForm() {
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email">Username</Label>
-            <Input id="email" required type="email" />
+            <Input id="email" required type="email" disabled={isLoading} />
           </div>
 
           {/* Password */}
@@ -48,10 +83,18 @@ export default function LoginForm() {
                 <Link href="#">Forgot password?</Link>
               </Button>
             </div>
-            <Input id="password" type="password" required />
+            <Input id="password" type="password" required disabled={isLoading} />
           </div>
 
-          <Button className="w-full mt-6">Sign In</Button>
+          {error && (
+            <div className="mt-4 p-3 text-sm text-red-500 bg-red-50 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <Button className="w-full mt-6" disabled={isLoading}>
+            {isLoading ? "Signing In..." : "Sign In"}
+          </Button>
         </div>
 
         {/* Footer */}
