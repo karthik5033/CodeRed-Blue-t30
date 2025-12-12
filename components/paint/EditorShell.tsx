@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Node, Edge, ReactFlowInstance } from "reactflow";
-import { Play, Search, Settings, ChevronRight, Monitor, Smartphone, Maximize2, Plus } from "lucide-react";
+import { Play, Search, Settings, ChevronRight, Monitor, Smartphone, Maximize2, Plus, Undo, Redo } from "lucide-react";
 
 import FlowCanvas from "./FlowCanvas";
 import NodeEditorModal from "./NodeEditorModal";
@@ -14,6 +14,7 @@ import { toTOON } from "../../utils/toon";
 import { generateAppBoilerplate, generateFlowFromImage } from "../../app/actions/ai";
 import { PanelResizeHandle, Panel, PanelGroup } from "react-resizable-panels";
 import { Upload } from "lucide-react";
+import { useHistory } from "@/hooks/useHistory";
 
 import DatabaseViewer from "../ai-builder/DatabaseViewer";
 
@@ -58,6 +59,9 @@ export default function EditorShell() {
 
     /* 🔹 ReactFlow Instance for fitView control */
     const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+    /* 🔹 History management for undo/redo */
+    const { pushHistory, undo, redo, canUndo, canRedo } = useHistory();
 
     /* 🔹 ReactFlow State */
     const [nodes, setNodes] = useState<Node[]>([
@@ -164,8 +168,58 @@ export default function EditorShell() {
         return () => clearTimeout(timeoutId);
     }, [nodes, edges, generatedCode, mounted]);
 
+    // Keyboard shortcuts for undo/redo
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ctrl+Z or Cmd+Z for undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                const prevState = undo();
+                if (prevState) {
+                    setNodes(prevState.nodes);
+                    setEdges(prevState.edges);
+                }
+            }
+            // Ctrl+Shift+Z or Cmd+Shift+Z or Ctrl+Y for redo
+            if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') || (e.ctrlKey && e.key === 'y')) {
+                e.preventDefault();
+                const nextState = redo();
+                if (nextState) {
+                    setNodes(nextState.nodes);
+                    setEdges(nextState.edges);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
+
+    // Track node/edge changes for undo/redo with debouncing (for drag operations)
+    const prevNodesRef = React.useRef<Node[]>(nodes);
+    const prevEdgesRef = React.useRef<Edge[]>(edges);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            // Only push to history if there's an actual change
+            const nodesChanged = JSON.stringify(prevNodesRef.current) !== JSON.stringify(nodes);
+            const edgesChanged = JSON.stringify(prevEdgesRef.current) !== JSON.stringify(edges);
+
+            if (nodesChanged || edgesChanged) {
+                pushHistory(prevNodesRef.current, prevEdgesRef.current);
+                prevNodesRef.current = nodes;
+                prevEdgesRef.current = edges;
+            }
+        }, 500); // Debounce for 500ms to avoid capturing every drag frame
+
+        return () => clearTimeout(timeout);
+    }, [nodes, edges, pushHistory]);
+
     /* 🔹 Handlers */
     const handleAddNode = (label: string) => {
+        // Push current state to history before making changes
+        pushHistory(nodes, edges);
+
         const newNode: Node = {
             id: `node-${Date.now()}`,
             type: "default",
@@ -185,6 +239,22 @@ export default function EditorShell() {
         };
         setNodes((nds) => [...nds, newNode]);
         return newNode;
+    };
+
+    const handleUndo = () => {
+        const prevState = undo();
+        if (prevState) {
+            setNodes(prevState.nodes);
+            setEdges(prevState.edges);
+        }
+    };
+
+    const handleRedo = () => {
+        const nextState = redo();
+        if (nextState) {
+            setNodes(nextState.nodes);
+            setEdges(nextState.edges);
+        }
     };
 
     const handleNodeClick = (node: Node | null) => {
@@ -295,6 +365,22 @@ export default function EditorShell() {
                     >
                         {isUploading ? <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-slate-700 animate-spin" /> : <Upload className="w-4 h-4" />}
                         Upload Flow
+                    </button>
+                    <button
+                        onClick={handleUndo}
+                        disabled={!canUndo}
+                        title="Undo (Ctrl+Z)"
+                        className="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        <Undo className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={handleRedo}
+                        disabled={!canRedo}
+                        title="Redo (Ctrl+Shift+Z)"
+                        className="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        <Redo className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => setActiveRightTab(activeRightTab === 'preview' ? 'database' : 'preview')}

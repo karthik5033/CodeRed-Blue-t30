@@ -74,9 +74,6 @@ export function insert(tableName: string, data: Record<string, any>) {
         const placeholders = keys.map(() => '?').join(', ');
         const columnNames = keys.map(k => `"${k}"`).join(', ');
 
-        // Add updated_at if it's not in data
-        // created_at is handled by default value
-
         const stmt = db.prepare(`INSERT INTO "${tableName}" (${columnNames}) VALUES (${placeholders})`);
         const info = stmt.run(...Object.values(data));
 

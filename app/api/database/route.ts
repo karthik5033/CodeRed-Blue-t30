@@ -87,6 +87,27 @@ export async function POST(request: NextRequest) {
                 const execResult = db.executeSQL(sql, params || []);
                 return cors(NextResponse.json(execResult));
 
+            case 'recreate_default_tables':
+                // Recreate standard app tables if they were deleted
+                const recreateResults = {
+                    app_form_submissions: db.createTable('app_form_submissions', [
+                        { name: 'project_id', type: 'TEXT' },
+                        { name: 'form_id', type: 'TEXT' },
+                        { name: 'data', type: 'TEXT' }
+                    ]),
+                    app_users: db.createTable('app_users', [
+                        { name: 'project_id', type: 'TEXT' },
+                        { name: 'email', type: 'TEXT' },
+                        { name: 'password_hash', type: 'TEXT' },
+                        { name: 'name', type: 'TEXT' }
+                    ])
+                };
+                return cors(NextResponse.json({
+                    success: true,
+                    message: 'Default tables recreated',
+                    results: recreateResults
+                }));
+
             default:
                 return cors(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
         }

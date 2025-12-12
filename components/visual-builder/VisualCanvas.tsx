@@ -107,7 +107,19 @@ export function VisualCanvas({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+        // Don't delete elements if user is typing in an input/textarea/select
+        const target = e.target as HTMLElement;
+        const isTyping = target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable;
+
+        if (isTyping) {
+            return; // Let the input handle the key event
+        }
+
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementIds.length > 0) {
+            e.preventDefault(); // Prevent browser back navigation on Backspace
             selectedElementIds.forEach(id => onDeleteElement(id));
         }
     };
@@ -163,11 +175,15 @@ export function VisualCanvas({
                     {elements.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="text-center">
-                                <div className="text-6xl mb-4">🎨</div>
-                                <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                                <div className="mx-auto w-16 h-16 mb-4 flex items-center justify-center">
+                                    <svg className="w-16 h-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-semibold text-slate-700 mb-2">
                                     Start Building Your App
                                 </h3>
-                                <p className="text-gray-500">
+                                <p className="text-slate-500">
                                     Drag elements from the left panel or click to add
                                 </p>
                             </div>
@@ -177,12 +193,22 @@ export function VisualCanvas({
             </div>
 
             {/* Canvas Tools */}
-            <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
-                <span>🔍 Zoom: 100%</span>
-                <span>•</span>
-                <span>📏 1024 × 768</span>
-                <span>•</span>
-                <span>{elements.length} elements</span>
+            <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                    <span>Zoom: 100%</span>
+                </div>
+                <span className="text-slate-300">•</span>
+                <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 12a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z" />
+                    </svg>
+                    <span>1024 × 768</span>
+                </div>
+                <span className="text-slate-300">•</span>
+                <span>{elements.length} {elements.length === 1 ? 'element' : 'elements'}</span>
             </div>
         </div>
     );

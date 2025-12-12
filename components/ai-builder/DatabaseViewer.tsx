@@ -112,6 +112,36 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
         }
     };
 
+    const recreateDefaultTables = async () => {
+        if (!confirm('Recreate default app tables (app_form_submissions, app_users)?')) {
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'recreate_default_tables'
+                })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                // Refresh tables list
+                await fetchTables();
+            } else {
+                setError(result.error);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Helper to parse JSON strings in data
     const parseValue = (value: any) => {
         if (typeof value === 'string') {
@@ -176,8 +206,20 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
                 {/* Tables Sidebar */}
                 <div className="w-64 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto">
                     <div className="p-2">
-                        <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">
-                            Tables
+                        <div className="flex items-center justify-between mb-2 px-2">
+                            <div className="text-xs font-semibold text-neutral-500 uppercase">
+                                Tables
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={recreateDefaultTables}
+                                disabled={isLoading}
+                                title="Recreate default app tables"
+                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                                + Reset
+                            </Button>
                         </div>
                         {tables.length > 0 ? (
                             tables.map((tableName) => (
