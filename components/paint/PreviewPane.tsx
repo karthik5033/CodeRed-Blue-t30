@@ -4,6 +4,35 @@ import React, { useEffect, useState } from "react";
 import { SandpackProvider, SandpackPreview, SandpackConsole, SandpackLayout, SandpackCodeEditor } from "@codesandbox/sandpack-react";
 import { Moon, Sun, Type, Palette, RefreshCw, Zap } from "lucide-react";
 
+// Polyfill for crypto.subtle.digest if not available
+if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.subtle || !window.crypto.subtle.digest)) {
+  if (!window.crypto) {
+    (window as any).crypto = {};
+  }
+  if (!window.crypto.subtle) {
+    (window.crypto as any).subtle = {};
+  }
+  if (!window.crypto.subtle.digest) {
+    // Simple fallback that creates a pseudo-hash
+    (window.crypto.subtle as any).digest = async function (algorithm: string, data: BufferSource) {
+      // Convert data to string
+      const str = new TextDecoder().decode(data);
+      // Simple hash function (not cryptographically secure, but works for Sandpack's ID generation)
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      // Return as ArrayBuffer
+      const buffer = new ArrayBuffer(4);
+      const view = new DataView(buffer);
+      view.setInt32(0, hash, false);
+      return buffer;
+    };
+  }
+}
+
 interface PreviewPaneProps {
   code?: string;
   isGenerating?: boolean;

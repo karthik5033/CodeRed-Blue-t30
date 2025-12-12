@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Node, Edge, ReactFlowInstance } from "reactflow";
-import { Play, Search, Settings, ChevronRight, Monitor, Smartphone, Maximize2, Plus, Undo, Redo } from "lucide-react";
+import { Play, Search, Settings, ChevronRight, ChevronDown, Monitor, Smartphone, Maximize2, Plus, Undo, Redo } from "lucide-react";
 
 import FlowCanvas from "./FlowCanvas";
 import NodeEditorModal from "./NodeEditorModal";
@@ -53,6 +53,7 @@ export default function EditorShell() {
     const [tokenStats, setTokenStats] = useState<{ jsonSize: number; toonSize: number; savedPercent: number } | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [activeRightTab, setActiveRightTab] = useState<'preview' | 'database'>('preview');
+    const [expandedWorkflow, setExpandedWorkflow] = useState<string | null>(null);
 
     // File Input Ref
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -493,33 +494,139 @@ export default function EditorShell() {
                                     <p className="text-xs text-slate-500">Select components to build your app logic.</p>
                                 </div>
 
-                                {/* Common Chats / Templates */}
-                                <div className="mb-6 space-y-2">
-                                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Common Workflows</h3>
-                                    {[
-                                        { label: "Portfolio Website", prompt: "Create a detailed flowchart for a modern Portfolio website with a Hero section, About Me, Project Gallery (grid), and Contact Form." },
-                                        { label: "SaaS Dashboard", prompt: "Build a flowchart for a comprehensive SaaS Dashboard with a sidebar, top metrics cards, revenue chart, and recent activity table." },
-                                        { label: "E-commerce Store", prompt: "Generate an E-commerce flowchart: Product Listing Page with filters -> Product Details -> Shopping Cart -> Checkout." },
-                                        { label: "Social Media Feed", prompt: "Design a flowchart for a social media feed with a 'Post Input' area, infinite scroll stream of posts (avatar + content), and a right sidebar for trends." },
-                                        { label: "Task Manager (Kanban)", prompt: "Create a flowchart for a Kanban-style Task Manager with columns for 'To Do', 'In Progress', and 'Done', including drag-and-drop visuals." },
-                                        { label: "Login & Auth Flow", prompt: "Build a secure Authentication flowchart: Login Screen with social buttons -> Forgot Password -> Two-Factor Verification." },
-                                        { label: "AI Chat Interface", prompt: "Design a flowchart for a ChatGPT-style AI interface with a left sidebar for history and a main chat area with input box and message bubbles." },
-                                        { label: "Landing Page (Startup)", prompt: "Create a high-conversion Startup Landing Page flowchart with: Sticky Navbar, Value Prop Hero, Feature Grid, Testimonials, and Pricing Table." }
-                                    ].map((item, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => {
-                                                setPendingChatMsg(item.prompt);
-                                                // Clear it shortly after so it can be triggered again if needed
-                                                setTimeout(() => setPendingChatMsg(null), 500);
-                                            }}
-                                            className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all flex items-center justify-between group"
-                                        >
-                                            {item.label}
-                                            <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-indigo-400" />
-                                        </button>
-                                    ))}
+                                {/* Common Workflows - Accordion Style */}
+                                <div className="mb-6">
+                                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Common Workflows</h3>
+                                    <div className="space-y-2">
+                                        {[
+                                            {
+                                                category: "Portfolio & Business",
+                                                icon: "💼",
+                                                workflows: [
+                                                    { label: "Portfolio Website", prompt: "Create a detailed flowchart for a modern Portfolio website with a Hero section, About Me, Project Gallery (grid), and Contact Form." },
+                                                    { label: "Company Website", prompt: "Build a corporate website flowchart with Navbar, Hero Banner, Services Section (3 columns), Team Grid, and Contact Page." },
+                                                    { label: "Personal Blog", prompt: "Design a blog flowchart with Header, Blog Post List (cards), Individual Post View with comments, and Sidebar with categories." },
+                                                    { label: "Agency Landing Page", prompt: "Create an agency landing page with Sticky Nav, Hero CTA, Case Studies carousel, Client Logos, and Footer with links." },
+                                                    { label: "Consulting Site", prompt: "Build a consultant website with Service Offerings, Testimonial Section, Booking Calendar, and Lead Capture Form." }
+                                                ]
+                                            },
+                                            {
+                                                category: "E-commerce & Retail",
+                                                icon: "🛒",
+                                                workflows: [
+                                                    { label: "E-commerce Store", prompt: "Generate an E-commerce flowchart: Product Listing Page with filters → Product Details → Shopping Cart → Checkout." },
+                                                    { label: "Product Catalog", prompt: "Create a product catalog with Grid/List toggle, Category Navigation, Search/Filter, and Quick View modals." },
+                                                    { label: "Checkout Flow", prompt: "Design a multi-step checkout: Cart Review → Shipping Info → Payment → Order Confirmation with email." },
+                                                    { label: "Marketplace", prompt: "Build a marketplace flowchart with Vendor Listings, Product Search, Reviews/Ratings, and Seller Dashboard." },
+                                                    { label: "Digital Store", prompt: "Create a digital products store with Instant Downloads, License Keys, Purchase History, and File Management." }
+                                                ]
+                                            },
+                                            {
+                                                category: "SaaS & Dashboards",
+                                                icon: "📊",
+                                                workflows: [
+                                                    { label: "SaaS Dashboard", prompt: "Build a flowchart for a comprehensive SaaS Dashboard with a sidebar, top metrics cards, revenue chart, and recent activity table." },
+                                                    { label: "Analytics Dashboard", prompt: "Create an analytics dashboard with Real-time Stats, Line/Bar Charts, Data Tables, and Export functionality." },
+                                                    { label: "Admin Panel", prompt: "Design an admin panel with User Management Table, Settings Pages, Activity Logs, and Notification Center." },
+                                                    { label: "Project Dashboard", prompt: "Build a project management dashboard with Task Overview, Team Members, Progress Charts, and Calendar View." },
+                                                    { label: "CRM Dashboard", prompt: "Create a CRM dashboard with Sales Pipeline, Contact List, Deal Tracker, and Performance Metrics." }
+                                                ]
+                                            },
+                                            {
+                                                category: "Social & Community",
+                                                icon: "👥",
+                                                workflows: [
+                                                    { label: "Social Media Feed", prompt: "Design a flowchart for a social media feed with a 'Post Input' area, infinite scroll stream of posts (avatar + content), and a right sidebar for trends." },
+                                                    { label: "Community Forum", prompt: "Create a forum with Thread List, Post Detail View, Reply System, User Profiles, and Moderation Tools." },
+                                                    { label: "Chat Application", prompt: "Build a real-time chat app with Contacts List, Message Threads, Typing Indicators, and File Sharing." },
+                                                    { label: "Event Platform", prompt: "Design an events platform with Calendar View, Event Details, RSVP System, and Attendee List." },
+                                                    { label: "Membership Site", prompt: "Create a membership site with Login Wall, Member Directory, Content Library, and Discussion Boards." }
+                                                ]
+                                            },
+                                            {
+                                                category: "Productivity & Tools",
+                                                icon: "⚡",
+                                                workflows: [
+                                                    { label: "Task Manager (Kanban)", prompt: "Create a flowchart for a Kanban-style Task Manager with columns for 'To Do', 'In Progress', and 'Done', including drag-and-drop visuals." },
+                                                    { label: "Note Taking App", prompt: "Build a notes app with Sidebar Navigation, Rich Text Editor, Search, Tags, and Cloud Sync indicator." },
+                                                    { label: "Calendar & Scheduling", prompt: "Design a calendar app with Month/Week/Day views, Event Creation Modal, Reminders, and Google Calendar Sync." },
+                                                    { label: "Document Manager", prompt: "Create a document manager with Folder Tree, File Grid/List, Upload Area, Preview Panel, and Version History." },
+                                                    { label: "Time Tracker", prompt: "Build a time tracking app with Timer Widget, Project Selection, Activity Log, Reports, and Billing Integration." }
+                                                ]
+                                            },
+                                            {
+                                                category: "Authentication & Onboarding",
+                                                icon: "🔐",
+                                                workflows: [
+                                                    { label: "Login & Auth Flow", prompt: "Build a secure Authentication flowchart: Login Screen with social buttons → Forgot Password → Two-Factor Verification." },
+                                                    { label: "Signup & Onboarding", prompt: "Create a multi-step signup: Email/Password → Profile Setup → Preferences → Welcome Tour with tooltips." },
+                                                    { label: "User Profile", prompt: "Design a user profile page with Avatar Upload, Bio Editor, Account Settings, Privacy Controls, and Activity History." },
+                                                    { label: "Password Reset", prompt: "Build password reset flow: Email Input → Verification Code → New Password → Success Confirmation." },
+                                                    { label: "Social Login", prompt: "Create social auth integration with Google/Facebook/GitHub buttons, Account Linking, and Permission Requests." }
+                                                ]
+                                            },
+                                            {
+                                                category: "Marketing & Landing Pages",
+                                                icon: "🚀",
+                                                workflows: [
+                                                    { label: "Landing Page (Startup)", prompt: "Create a high-conversion Startup Landing Page flowchart with: Sticky Navbar, Value Prop Hero, Feature Grid, Testimonials, and Pricing Table." },
+                                                    { label: "Product Launch", prompt: "Build a product launch page with Countdown Timer, Pre-order Form, Feature Showcase, and Email Signup." },
+                                                    { label: "Lead Generation", prompt: "Design a lead gen page with Hero Form, Benefits List, Social Proof, FAQ Section, and Thank You Modal." },
+                                                    { label: "Webinar Registration", prompt: "Create webinar signup with Speaker Bio, Agenda, Registration Form, Calendar Add, and Confirmation Email." },
+                                                    { label: "App Download Page", prompt: "Build an app landing page with Screenshots Carousel, Features Grid, App Store Badges, and Reviews Section." }
+                                                ]
+                                            },
+                                            {
+                                                category: "AI & Chat Interfaces",
+                                                icon: "🤖",
+                                                workflows: [
+                                                    { label: "AI Chat Interface", prompt: "Design a flowchart for a ChatGPT-style AI interface with a left sidebar for history and a main chat area with input box and message bubbles." },
+                                                    { label: "Chatbot Widget", prompt: "Create an embedded chatbot with Floating Button, Chat Window, Quick Replies, and Human Handoff option." },
+                                                    { label: "AI Assistant Dashboard", prompt: "Build an AI assistant dashboard with Conversation History, Model Settings, Prompt Templates, and Usage Analytics." },
+                                                    { label: "Voice Chat App", prompt: "Design a voice chat interface with Recording Button, Waveform Visualization, Transcript Display, and Voice Settings." },
+                                                    { label: "AI Content Generator", prompt: "Create a content generator with Input Form, Generation Options, Preview Panel, Export Buttons, and History Log." }
+                                                ]
+                                            }
+                                        ].map((group, groupIndex) => (
+                                            <div key={groupIndex} className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                                                {/* Category Header - Clickable */}
+                                                <button
+                                                    onClick={() => setExpandedWorkflow(expandedWorkflow === group.category ? null : group.category)}
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-lg">{group.icon}</span>
+                                                        <span className="font-medium text-xs text-slate-700">{group.category}</span>
+                                                    </div>
+                                                    {expandedWorkflow === group.category ? (
+                                                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                                    ) : (
+                                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                                    )}
+                                                </button>
+
+                                                {/* Workflows - Shown when expanded */}
+                                                {expandedWorkflow === group.category && (
+                                                    <div className="border-t border-slate-200 p-2 space-y-1.5 bg-slate-50">
+                                                        {group.workflows.map((item, i) => (
+                                                            <button
+                                                                key={i}
+                                                                onClick={() => {
+                                                                    setPendingChatMsg(item.prompt);
+                                                                    setTimeout(() => setPendingChatMsg(null), 500);
+                                                                }}
+                                                                className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-100 rounded-md hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all group"
+                                                            >
+                                                                {item.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
+
 
                                 {/* Tip */}
                                 <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100 text-xs text-yellow-700 leading-relaxed">
