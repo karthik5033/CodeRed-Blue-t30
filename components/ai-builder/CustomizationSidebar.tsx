@@ -50,14 +50,19 @@ export default function CustomizationSidebar({
         }
 
         if (Object.keys(customizations).length > 0) {
+            console.log('Applying customizations:', customizations);
             onCustomize(customizations);
+
+            // Reset selections after applying
+            setSelectedColor('');
+            setSelectedButton('');
         }
     };
 
     const hasChanges = selectedColor || selectedButton;
 
     return (
-        <div className="w-80 bg-neutral-50 dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 flex flex-col">
+        <div className="w-80 h-full bg-neutral-50 dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -92,8 +97,8 @@ export default function CustomizationSidebar({
                                         onClick={() => setSelectedColor(scheme.value)}
                                         disabled={isLoading}
                                         className={`w-full p-3 rounded-lg border-2 transition-all ${selectedColor === scheme.value
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                                : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                            : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -119,8 +124,8 @@ export default function CustomizationSidebar({
                                         onClick={() => setSelectedButton(style.value)}
                                         disabled={isLoading}
                                         className={`p-3 rounded-lg border-2 transition-all ${selectedButton === style.value
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                                : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                            : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                                             }`}
                                     >
                                         <div

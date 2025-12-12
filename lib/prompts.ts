@@ -38,7 +38,8 @@ function requireAuth(pageName) {
 }
 
 // ===== AUTHENTICATION FUNCTIONS =====
-async function handleSignup() {
+async function handleSignup(event) {
+    event.preventDefault();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const name = document.getElementById('signup-name')?.value.trim() || email.split('@')[0];
@@ -95,7 +96,8 @@ async function handleSignup() {
     }
 }
 
-async function handleLogin() {
+async function handleLogin(event) {
+    event.preventDefault();
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     

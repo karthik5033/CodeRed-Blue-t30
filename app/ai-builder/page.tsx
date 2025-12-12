@@ -78,16 +78,22 @@ export default function AIBuilderPage() {
     }, [isDragging, dragStartY, dragStartHeight]);
 
     const handleGenerate = async (prompt: string) => {
+        console.log('=== GENERATE PAGE STARTED ===');
+        console.log('Prompt:', prompt);
+
         setIsGenerating(true);
         setError(null);
         setGeneratedFiles([]); // Clear previous files
 
         try {
+            console.log('Sending request to /api/generate...');
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt }),
             });
+
+            console.log('Response status:', response.ok, response.status);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -102,10 +108,14 @@ export default function AIBuilderPage() {
             }
 
             let buffer = ''; // Buffer for incomplete chunks
+            console.log('Starting to read stream...');
 
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done) {
+                    console.log('Stream reading complete');
+                    break;
+                }
 
                 // Decode and add to buffer
                 buffer += decoder.decode(value, { stream: true });
@@ -126,11 +136,14 @@ export default function AIBuilderPage() {
                             }
 
                             if (data.done && data.files) {
+                                console.log('Generation complete! Files received:', data.files.length);
                                 setGeneratedFiles(data.files);
                                 if (data.structure) {
+                                    console.log('Project structure received');
                                     setProjectStructure(data.structure);
                                 }
                                 if (data.database) {
+                                    console.log('Database schema received');
                                     setDatabaseSchema(data.database);
                                     // Keep code tab active, don't auto-switch
                                 }
@@ -149,6 +162,7 @@ export default function AIBuilderPage() {
                 try {
                     const data = JSON.parse(buffer.slice(6));
                     if (data.done && data.files) {
+                        console.log('Final buffer - Files received:', data.files.length);
                         setGeneratedFiles(data.files);
                         if (data.structure) {
                             setProjectStructure(data.structure);
@@ -166,12 +180,14 @@ export default function AIBuilderPage() {
             setError(err instanceof Error ? err.message : 'Failed to generate page');
         } finally {
             setIsGenerating(false);
+            console.log('=== GENERATE PAGE ENDED ===');
         }
     };
 
     const handleCustomize = async (customizations: CustomizationOptions | { modification: string }) => {
         if (generatedFiles.length === 0) return;
 
+        console.log('handleCustomize called with:', customizations);
         setIsCustomizing(true);
         setError(null);
 
@@ -193,6 +209,7 @@ export default function AIBuilderPage() {
             }
 
             const data = await response.json();
+            console.log('Customization response:', data);
             setGeneratedFiles(data.files);
         } catch (err) {
             console.error('Customization error:', err);
@@ -485,6 +502,7 @@ export default function AIBuilderPage() {
                                         };
                                         setGeneratedFiles(updatedFiles);
                                     }}
+                                    onExpandChange={setIsPanelExpanded}
                                 />
                             </div>
                         </div>
@@ -518,7 +536,7 @@ export default function AIBuilderPage() {
                 {!isFullscreen && (
                     <>
                         {showRightPanel ? (
-                            <div className="relative">
+                            <div className="relative h-full">
                                 {editorMode === 'visual' ? (
                                     <PropertyInspector
                                         selectedElement={selectedElement}

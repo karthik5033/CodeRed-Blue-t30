@@ -19,6 +19,7 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
     const [tables, setTables] = useState<string[]>([]);
     const [viewMode, setViewMode] = useState<'json' | 'analysis'>('analysis');
     const [isExpanded, setIsExpanded] = useState(false);
+    const [tableToDelete, setTableToDelete] = useState<string | null>(null);
 
     // Auto-connect and fetch tables on mount
     useEffect(() => {
@@ -81,9 +82,11 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
     }, [selectedTable, isConnected]);
 
     const deleteTable = async (tableName: string) => {
-        if (!confirm(`Are you sure you want to permanently delete the table "${tableName}"? This cannot be undone.`)) {
-            return;
-        }
+        setTableToDelete(tableName);
+    };
+
+    const confirmDeleteTable = async () => {
+        if (!tableToDelete) return;
 
         setIsLoading(true);
         setError(null);
@@ -93,7 +96,7 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'delete_table',
-                    table: tableName
+                    table: tableToDelete
                 })
             });
             const result = await response.json();
@@ -102,6 +105,7 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
                 // Refresh tables list
                 await fetchTables();
                 setSelectedTable('');
+                setTableToDelete(null);
             } else {
                 setError(result.error);
             }
@@ -357,6 +361,34 @@ export default function DatabaseViewer({ schema, onExpandChange }: DatabaseViewe
                     </div>
                 </div>
             </div>
+
+            {/* Delete Table Confirmation Dialog */}
+            {tableToDelete && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setTableToDelete(null)}>
+                    <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-2">Delete Table?</h3>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
+                            Are you sure you want to permanently delete the table "<span className="font-mono font-semibold">{tableToDelete}</span>"? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <Button
+                                variant="outline"
+                                onClick={() => setTableToDelete(null)}
+                                disabled={isLoading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={confirmDeleteTable}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Deleting...' : 'OK, Delete'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

@@ -30,10 +30,10 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
     const stats = prompt ? getOptimizationStats(prompt, optimizedPrompt) : null;
 
     const examplePrompts = [
-        'Build a task manager app with user authentication and SQLite database',
-        'Create a blog platform with posts, comments, and user profiles',
-        'Make an e-commerce product catalog with shopping cart and checkout',
-        'Design a real-time chat application with message history',
+        'Create a modern fitness app with landing page, login, signup, and dashboard. Include: Hero section with fitness image, sign up form storing to database with redirect to dashboard, login with credential validation and error messages, dashboard showing user name and fitness stats with images. Use purple/pink gradient, single HTML file, backend API, and back buttons on all pages except landing.',
+        'Build a blog platform with landing page, user authentication, post creation, and comments. Include: Hero section with blog images, user registration and login with database storage, create/edit/delete posts with rich text, comment system on each post, user profile page showing their posts. Use blue/purple theme, single HTML file, backend API for posts and comments, and back buttons on all pages.',
+        'Create an e-commerce product catalog with shopping cart and checkout. Include: Landing page with product grid and images, product detail pages, add to cart functionality, shopping cart page with quantity controls, checkout form storing orders in database, user accounts for order history. Use green/teal theme, single HTML file, backend API, product images throughout, and back buttons on all pages.',
+        'Design a real-time chat application with user authentication and message history. Include: Landing page with app preview, login/signup storing users in database, chat room list, messaging interface with send/receive, message history from database, user avatars and timestamps. Use indigo/blue theme, single HTML file, backend API for messages, back buttons for navigation between rooms and settings.',
     ];
 
     return (
@@ -130,7 +130,7 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
                 {/* Example Prompts */}
                 <div className="mt-4">
                     <label className="text-sm font-medium mb-2 block">Examples</label>
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                         {examplePrompts.map((example, index) => (
                             <button
                                 key={index}
