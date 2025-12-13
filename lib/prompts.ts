@@ -816,7 +816,7 @@ export function generateModificationPrompt(existingCode: string, modification: s
     return `${SYSTEM_PROMPT}
 
 EXISTING CODE:
-\`\`\`
+    \`\`\`
 ${existingCode}
 \`\`\`
 

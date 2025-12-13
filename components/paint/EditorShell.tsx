@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Node, Edge, ReactFlowInstance } from "reactflow";
-import { Play, Search, Settings, ChevronRight, ChevronDown, Monitor, Smartphone, Maximize2, Plus, Undo, Redo, Wand2, Sparkles } from "lucide-react";
+import { Play, Search, Settings, ChevronRight, ChevronDown, Monitor, Smartphone, Maximize2, Plus, Undo, Redo, Wand2, Sparkles, Bot } from "lucide-react";
 import Link from "next/link";
 
 import FlowCanvas from "./FlowCanvas";
@@ -396,6 +396,12 @@ export default function EditorShell() {
                             AI Builder
                         </button>
                     </Link>
+                    <Link href="/interview">
+                        <button className="px-4 py-2 text-sm font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors shadow-sm flex items-center gap-2">
+                            <Bot className="w-4 h-4" />
+                            Avatar Studio
+                        </button>
+                    </Link>
                     <button
                         onClick={() => setActiveRightTab(activeRightTab === 'preview' ? 'database' : 'preview')}
                         className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors shadow-sm ${activeRightTab === 'database'
@@ -615,14 +621,14 @@ export default function EditorShell() {
                                                 <button
                                                     onClick={() => setExpandedWorkflow(expandedWorkflow === group.category ? null : group.category)}
                                                     className={`w-full flex items-center justify-between p-4 transition-all ${expandedWorkflow === group.category
-                                                            ? 'bg-gradient-to-r from-purple-50 to-indigo-50'
-                                                            : 'hover:bg-slate-50'
+                                                        ? 'bg-gradient-to-r from-purple-50 to-indigo-50'
+                                                        : 'hover:bg-slate-50'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shadow-sm transition-all ${expandedWorkflow === group.category
-                                                                ? 'bg-gradient-to-br from-purple-500 to-indigo-500 scale-110'
-                                                                : 'bg-gradient-to-br from-slate-100 to-slate-200'
+                                                            ? 'bg-gradient-to-br from-purple-500 to-indigo-500 scale-110'
+                                                            : 'bg-gradient-to-br from-slate-100 to-slate-200'
                                                             }`}>
                                                             {group.icon}
                                                         </div>
